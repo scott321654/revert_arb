@@ -186,16 +186,7 @@ def _monitor_single(stock_id: str, has_ref: bool, ref_price=None, ref_name="", p
         deviation = round((final_price - ref_price) / ref_price * 100, 2)
         day_change = round((final_price - prev_close) / prev_close * 100, 2)
     else:
-        deviation = None
-
-    if deviation is None:
-        q = current_price(stock_id)
-        if not q or q["price"] is None:
-            return None
-        stock_name = stock_name or q["name"] or lookup_name(stock_id)
-        prev_close = prev_close or q["prev_close"]
-        deviation = round((q["price"] - prev_close) / prev_close * 100, 2)
-        final_price = q["price"]
+        return None
 
     adj = AdjustmentList()
     event = adj.get_event(stock_id)
@@ -235,6 +226,11 @@ def cmd_monitor_all():
         print("❌ adjustment.json 中沒有被剔除或權重調降的股票")
         print("   請先執行: python3 run.py adjust")
         return
+
+    if not is_effective_today():
+        print("⚠️  今天不是生效日（第三個週五），ETF 不會在尾盤換股")
+        print("   尾盤偏離度將不具策略意義，僅供測試")
+        print()
 
     print(f"📋 將監控 {len(targets)} 檔標的: {', '.join(targets)}")
     print()
@@ -381,6 +377,11 @@ def cmd_monitor():
         cmd_monitor_all()
         return
 
+    if not is_effective_today():
+        print("⚠️  今天不是生效日（第三個週五），ETF 不會在尾盤換股")
+        print("   尾盤偏離度將不具策略意義，僅供測試")
+        print()
+
     entry_start, entry_end = STRATEGY["entry_window"]
     now = datetime.now()
     today_str = now.strftime("%Y-%m-%d")
@@ -464,24 +465,13 @@ def cmd_monitor():
         print(f"   今日漲跌(對昨收): {day_change:+.2f}%")
         print()
     else:
-        print(f"⚠️  已過 13:25，無法計算尾盤5分鐘偏離度")
-        quote = current_price(stock_id)
-        if not quote or quote["price"] is None:
-            print("❌ 無法取得報價")
-            return
-        final_price = quote["price"]
-        stock_name = quote["name"] or lookup_name(stock_id)
-        prev_close = quote["prev_close"]
-        deviation = round((final_price - prev_close) / prev_close * 100, 2)
-        print(f"✅ {stock_id} {stock_name}")
-        print(f"   現價: {final_price}  昨收: {prev_close}")
-        print(f"   今日漲跌: {deviation:+.2f}% (非尾盤5分鐘)")
-        print()
+        print(f"⚠️  已過 13:25，無法取得13:25基準價，無法計算尾盤5分鐘偏離度")
+        print("   請改用: python3 run.py check <代號> <跌幅%> <波動率%> 手動輸入")
+        return
 
-    label = "尾盤" if has_ref else "今日"
     if deviation >= 0:
-        print(f"⚠️  {label}未下跌 (偏離度 {deviation:+.2f}%)，不符合超跌條件")
-        override = input(f"   仍想手動輸入{label}跌幅？(輸入負值, Enter跳過): ").strip()
+        print(f"⚠️  尾盤未下跌 (偏離度 {deviation:+.2f}%)，不符合超跌條件")
+        override = input(f"   仍想手動輸入尾盤跌幅？(輸入負值, Enter跳過): ").strip()
         if override:
             try:
                 deviation = float(override)
@@ -492,7 +482,7 @@ def cmd_monitor():
             print("⛔ 跳過")
             return
     else:
-        print(f"   {label}下跌 {deviation:.2f}%，符合超跌方向")
+        print(f"   尾盤下跌 {deviation:.2f}%，符合超跌方向")
         override = input(f"   可手動修正偏離度 (Enter = 沿用 {deviation}%): ").strip()
         if override:
             try:
