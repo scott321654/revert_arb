@@ -3,6 +3,6 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from revert_arb.main import main
+from tw0050_arb.main import main
 
 main()
