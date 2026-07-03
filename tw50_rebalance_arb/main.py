@@ -13,6 +13,7 @@
 """
 import sys
 import time
+from typing import Optional
 from datetime import date, datetime, timedelta
 
 from .schedule import quarterly_dates, next_effective_date, is_effective_today
@@ -174,13 +175,186 @@ def cmd_check():
         print("❌ 不符合進場條件，不交易")
 
 
+def _monitor_single(stock_id: str, has_ref: bool, ref_price=None, ref_name="", prev_close=None, ref_props=None, final_price=None) -> Optional[dict]:
+    if ref_props:
+        stock_name = ref_props["name"]
+        prev_close = ref_props["prev_close"]
+    else:
+        stock_name = ref_name
+
+    if ref_price is not None and final_price is not None:
+        deviation = round((final_price - ref_price) / ref_price * 100, 2)
+        day_change = round((final_price - prev_close) / prev_close * 100, 2)
+    else:
+        deviation = None
+
+    if deviation is None:
+        q = current_price(stock_id)
+        if not q or q["price"] is None:
+            return None
+        stock_name = stock_name or q["name"] or lookup_name(stock_id)
+        prev_close = prev_close or q["prev_close"]
+        deviation = round((q["price"] - prev_close) / prev_close * 100, 2)
+        final_price = q["price"]
+
+    adj = AdjustmentList()
+    event = adj.get_event(stock_id)
+    if not event:
+        return None
+    if event == "被納入":
+        return None
+
+    hist_vol = recent_daily_volatility(stock_id, 5) or 0
+    sig = evaluate(
+        stock_id=stock_id,
+        stock_name=stock_name,
+        event=event,
+        price_deviation_pct=deviation,
+        historical_volatility=hist_vol,
+        zscore_threshold=STRATEGY["zscore_threshold"],
+    )
+    return {
+        "stock_id": stock_id,
+        "stock_name": stock_name,
+        "event": event,
+        "ref_price": ref_price,
+        "final_price": final_price,
+        "deviation": deviation,
+        "volatility": hist_vol,
+        "zscore": sig.zscore,
+        "threshold_met": sig.threshold_met,
+        "actionable": sig.actionable,
+        "notes": sig.notes,
+    }
+
+
+def cmd_monitor_all():
+    adj = AdjustmentList()
+    targets = adj.data.get("removed", []) + adj.data.get("reweight", [])
+    if not targets:
+        print("❌ adjustment.json 中沒有被剔除或權重調降的股票")
+        print("   請先執行: python3 run.py adjust")
+        return
+
+    print(f"📋 將監控 {len(targets)} 檔標的: {', '.join(targets)}")
+    print()
+
+    entry_start, entry_end = STRATEGY["entry_window"]
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
+    end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
+    poll_start = start_dt.replace(second=0) - timedelta(seconds=5)
+
+    if now < poll_start:
+        wait_min = (poll_start - now).total_seconds() / 60
+        print(f"⏳ 等待尾盤窗口，約再等 {wait_min:.0f} 分鐘...")
+        while datetime.now() < poll_start:
+            time.sleep(5)
+
+    has_ref = datetime.now() < start_dt.replace(second=0)
+    refs = {}
+    if has_ref:
+        print(f"📡 批次捕捉 {len(targets)} 檔 13:25 前最後成交價...")
+        deadline_13_25 = start_dt.replace(second=0)
+        while datetime.now() < deadline_13_25:
+            for sid in targets:
+                if sid not in refs:
+                    q = current_price(sid)
+                    z = q.get("z") if q else None
+                    p = float(z) if z and z != "-" else None
+                    if p is not None:
+                        refs[sid] = {
+                            "price": p,
+                            "name": q.get("n") or lookup_name(sid),
+                            "prev_close": float(q["y"]) if q.get("y") and q["y"] != "-" else None,
+                        }
+                        done = len(refs)
+                        print(f"\r   {sid}: {p}  ({done}/{len(targets)})", end="", flush=True)
+            time.sleep(1)
+        print()
+
+        missing = [s for s in targets if s not in refs]
+        if missing:
+            print(f"⚠️  以下股票未取得基準價: {', '.join(missing)}")
+            targets = [s for s in targets if s in refs]
+
+        remaining = (end_dt - datetime.now()).total_seconds()
+        if remaining > 0:
+            print(f"⏳ 等待 13:30 收盤價，約再等 {remaining:.0f} 秒...")
+            time.sleep(remaining)
+
+        print(f"📡 批次查詢 {len(targets)} 檔 13:30 收盤價...")
+        finals = {}
+        for sid in targets:
+            q = current_price(sid)
+            z_raw = q.get("z") if q else "-"
+            final_z = float(z_raw) if z_raw and z_raw != "-" else None
+            if final_z is not None:
+                finals[sid] = final_z
+            else:
+                a = q.get("a", "") if q else ""
+                b = q.get("b", "") if q else ""
+                try:
+                    ask = float(a.split("_")[0]) if a and a != "-" else None
+                    bid = float(b.split("_")[0]) if b and b != "-" else None
+                    if ask and bid:
+                        finals[sid] = round((ask + bid) / 2, 2)
+                except (ValueError, IndexError, TypeError):
+                    pass
+            print(f"\r   {sid}: {finals.get(sid, '−')}  ({list(finals.keys()).index(sid)+1}/{len(targets)})", end="", flush=True)
+        print()
+    else:
+        finals = {}
+        for sid in targets:
+            q = current_price(sid)
+            if q and q["price"]:
+                finals[sid] = q["price"]
+                print(f"\r   {sid}: {q['price']}", end="", flush=True)
+        print()
+
+    results = []
+    for sid in targets:
+        r = _monitor_single(
+            sid,
+            has_ref,
+            ref_price=refs.get(sid, {}).get("price") if has_ref else None,
+            ref_props=refs.get(sid) if has_ref else None,
+            final_price=finals.get(sid),
+        )
+        if r:
+            results.append(r)
+
+    if not results:
+        print("\n❌ 沒有符合條件的標的")
+        return
+
+    print()
+    print("=" * 70)
+    label = "尾盤5分鐘偏離度" if has_ref else "今日漲跌"
+    print(f"{'股票':<10} {'事件':<8} {'基準':>8} {'收盤':>8} {label:<12} {'波動率':>6} {'Z-score':>8}  結果")
+    print("=" * 70)
+    for r in results:
+        ref_str = f"{r['ref_price']:.2f}" if r["ref_price"] else "−"
+        ok = "✅" if r["actionable"] else "❌"
+        print(f"{r['stock_id']:<6} {r['stock_name']:<4} {r['event']:<8} {ref_str:>8} {r['final_price']:>8.2f} {r['deviation']:>+7.2f}%  {r['volatility']:>5.2f}%  {r['zscore']:>5.1f}σ  {ok} {r['notes']}")
+    print("=" * 70)
+    actionable = [r for r in results if r["actionable"]]
+    if actionable:
+        print(f"\n✅ 建議進場: {' '.join(r['stock_id'] for r in actionable)}")
+        print("   請個別執行 python3 run.py monitor <代號> 來記錄交易")
+
+
 def cmd_monitor():
     if len(sys.argv) < 3:
         print("用法: python3 run.py monitor <股票代號>")
-        print("範例: python3 run.py monitor 5871")
+        print("  或: python3 run.py monitor all    # 批次掃描所有剔除/調降股")
         return
 
     stock_id = sys.argv[2].strip()
+    if stock_id == "all":
+        cmd_monitor_all()
+        return
 
     entry_start, entry_end = STRATEGY["entry_window"]
     now = datetime.now()
