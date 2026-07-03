@@ -348,7 +348,26 @@ def cmd_monitor_all():
     actionable = [r for r in results if r["actionable"]]
     if actionable:
         print(f"\n✅ 建議進場: {' '.join(r['stock_id'] for r in actionable)}")
-        print("   請個別執行 python3 run.py monitor <代號> 來記錄交易")
+        for r in actionable:
+            ans = input(f"\n{r['stock_id']} {r['stock_name']} 是否進場？(y/n, 預設n): ").strip().lower()
+            if ans != "y":
+                continue
+            try:
+                entry_price = float(input(f"  {r['stock_id']} 成交均價: "))
+                shares = int(float(input(f"  {r['stock_id']} 買進張數: ")) * 1000)
+                sig = evaluate(
+                    stock_id=r["stock_id"],
+                    stock_name=r["stock_name"],
+                    event=r["event"],
+                    price_deviation_pct=r["deviation"],
+                    historical_volatility=r["volatility"],
+                    zscore_threshold=STRATEGY["zscore_threshold"],
+                )
+                journal = TradeJournal()
+                rec = journal.record_entry(sig, entry_price, shares)
+                print(f"  ✅ 已記錄: {rec['stock_id']} {shares//1000}張 @ {entry_price}")
+            except (ValueError, KeyboardInterrupt):
+                print(f"  ❌ 取消 {r['stock_id']}")
 
 
 def cmd_monitor():
