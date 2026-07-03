@@ -13,7 +13,7 @@
 """
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from .schedule import quarterly_dates, next_effective_date, is_effective_today
 from .signal import evaluate
@@ -188,53 +188,94 @@ def cmd_monitor():
     start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
     end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
 
-    if now < start_dt:
-        wait_min = (start_dt - now).total_seconds() / 60
-        print(f"⏳ 等待進場窗口 ({entry_start}~{entry_end})，約再等 {wait_min:.0f} 分鐘...")
-        while datetime.now() < start_dt:
+    poll_start = start_dt.replace(second=0) - timedelta(seconds=10)
+    if now < poll_start:
+        wait_min = (poll_start - now).total_seconds() / 60
+        print(f"⏳ 等待尾盤窗口，約再等 {wait_min:.0f} 分鐘...")
+        while datetime.now() < poll_start:
             time.sleep(5)
-        print("⏰ 進場窗口到了！")
-    elif now > end_dt:
-        print(f"⚠️  已過進場窗口 ({entry_start}~{entry_end})，資料可能已非尾盤報價")
 
-    print(f"📡 正在查詢 {stock_id} 13:25 基準價...")
-    ref_quote = current_price(stock_id)
-    if not ref_quote or ref_quote["price"] is None:
-        print("❌ 無法取得13:25基準報價")
-        return
-    ref_price = ref_quote["price"]
-    stock_name = ref_quote["name"] or lookup_name(stock_id)
-    print(f"✅ 13:25 基準價: {ref_price}")
-    print(f"   昨收: {ref_quote['prev_close']}")
-    print()
+    has_ref = datetime.now() < start_dt.replace(second=0)
+    if has_ref:
+        print(f"📡 持續捕捉 {stock_id} 13:25 前最後一筆成交價...")
+        ref_price = None
+        last_print = ""
+        deadline_13_25 = start_dt.replace(second=0)
+        while datetime.now() < deadline_13_25:
+            q = current_price(stock_id)
+            z = q.get("z") if q else None
+            p = float(z) if z and z != "-" else None
+            if p is not None:
+                ref_price = p
+                stock_name = q["name"] or lookup_name(stock_id)
+                prev_close = q["prev_close"]
+            now_str = datetime.now().strftime("%H:%M:%S")
+            msg = f"\r   {now_str}  最新價: {p or '−':>8}   基準價: {ref_price or '−'}"
+            if msg != last_print:
+                print(msg, end="", flush=True)
+                last_print = msg
+            time.sleep(1)
 
-    now2 = datetime.now()
-    if now2 < end_dt:
-        remaining = (end_dt - now2).total_seconds()
+        if ref_price is None:
+            print("\n❌ 無法在13:25前取得成交價")
+            return
+        print(f"\n✅ 13:25 基準價: {ref_price}")
+
+        remaining = (end_dt - datetime.now()).total_seconds()
         if remaining > 0:
             print(f"⏳ 等待 13:30 收盤價，約再等 {remaining:.0f} 秒...")
             time.sleep(remaining)
 
-    print(f"📡 查詢 {stock_id} 13:30 收盤價...")
-    final_quote = current_price(stock_id)
-    if not final_quote or final_quote["price"] is None:
-        print("❌ 無法取得13:30收盤報價")
-        return
-    final_price = final_quote["price"]
+        print(f"📡 查詢 {stock_id} 13:30 收盤價...")
+        final_quote = current_price(stock_id)
+        z_raw = final_quote.get("z") if final_quote else "-"
+        final_z = float(z_raw) if z_raw and z_raw != "-" else None
+        if final_z is not None:
+            final_price = final_z
+        else:
+            a = final_quote.get("a", "") if final_quote else ""
+            b = final_quote.get("b", "") if final_quote else ""
+            try:
+                ask = float(a.split("_")[0]) if a and a != "-" else None
+                bid = float(b.split("_")[0]) if b and b != "-" else None
+                if ask and bid:
+                    final_price = round((ask + bid) / 2, 2)
+                else:
+                    print("❌ 無法取得13:30收盤價")
+                    return
+            except (ValueError, IndexError, TypeError):
+                print("❌ 無法取得13:30收盤價")
+                return
 
-    day_change = round((final_price - ref_quote["prev_close"]) / ref_quote["prev_close"] * 100, 2)
-    deviation = round((final_price - ref_price) / ref_price * 100, 2)
+        day_change = round((final_price - prev_close) / prev_close * 100, 2)
+        deviation = round((final_price - ref_price) / ref_price * 100, 2)
 
-    print(f"✅ {stock_id} {stock_name}")
-    print(f"   13:25 基準: {ref_price}")
-    print(f"   13:30 收盤: {final_price}")
-    print(f"   尾盤5分鐘偏離度: {deviation:+.2f}%")
-    print(f"   今日漲跌(對昨收): {day_change:+.2f}%")
-    print()
+        print(f"   昨收: {prev_close}")
+        print(f"   今開: {final_quote.get('o', '')}")
+        print(f"   13:25 基準: {ref_price}")
+        print(f"   13:30 收盤: {final_price}")
+        print(f"   尾盤5分鐘偏離度: {deviation:+.2f}%")
+        print(f"   今日漲跌(對昨收): {day_change:+.2f}%")
+        print()
+    else:
+        print(f"⚠️  已過 13:25，無法計算尾盤5分鐘偏離度")
+        quote = current_price(stock_id)
+        if not quote or quote["price"] is None:
+            print("❌ 無法取得報價")
+            return
+        final_price = quote["price"]
+        stock_name = quote["name"] or lookup_name(stock_id)
+        prev_close = quote["prev_close"]
+        deviation = round((final_price - prev_close) / prev_close * 100, 2)
+        print(f"✅ {stock_id} {stock_name}")
+        print(f"   現價: {final_price}  昨收: {prev_close}")
+        print(f"   今日漲跌: {deviation:+.2f}% (非尾盤5分鐘)")
+        print()
 
+    label = "尾盤" if has_ref else "今日"
     if deviation >= 0:
-        print(f"⚠️  尾盤未下跌 (偏離度 {deviation:+.2f}%)，不符合超跌條件")
-        override = input("   仍想手動輸入尾盤跌幅？(輸入負值, Enter跳過): ").strip()
+        print(f"⚠️  {label}未下跌 (偏離度 {deviation:+.2f}%)，不符合超跌條件")
+        override = input(f"   仍想手動輸入{label}跌幅？(輸入負值, Enter跳過): ").strip()
         if override:
             try:
                 deviation = float(override)
@@ -245,7 +286,7 @@ def cmd_monitor():
             print("⛔ 跳過")
             return
     else:
-        print(f"   尾盤下跌 {deviation:.2f}%，符合超跌方向")
+        print(f"   {label}下跌 {deviation:.2f}%，符合超跌方向")
         override = input(f"   可手動修正偏離度 (Enter = 沿用 {deviation}%): ").strip()
         if override:
             try:
