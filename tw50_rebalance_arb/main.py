@@ -247,13 +247,19 @@ def cmd_monitor_all():
     poll_start = start_dt.replace(second=0) - timedelta(seconds=5)
 
     if now < poll_start:
-        wait_min = (poll_start - now).total_seconds() / 60
-        print(f"⏳ 等待尾盤窗口，約再等 {wait_min:.0f} 分鐘...")
+        last_bar = ""
         while datetime.now() < poll_start:
-            time.sleep(5)
+            remaining = int((poll_start - datetime.now()).total_seconds())
+            h, r = divmod(remaining, 3600)
+            m, s = divmod(r, 60)
+            bar = f"\r⏳ 等待尾盤窗口  {h:02d}:{m:02d}:{s:02d}"
+            if bar != last_bar:
+                print(bar, end="", flush=True)
+                last_bar = bar
+            time.sleep(1)
+        print()
 
     has_ref = datetime.now() < start_dt.replace(second=0)
-    refs = {}
     if has_ref:
         print(f"📡 批次捕捉 {len(targets)} 檔 13:25 前最後成交價...")
         deadline_13_25 = start_dt.replace(second=0)
@@ -364,10 +370,17 @@ def cmd_monitor():
 
     poll_start = start_dt.replace(second=0) - timedelta(seconds=10)
     if now < poll_start:
-        wait_min = (poll_start - now).total_seconds() / 60
-        print(f"⏳ 等待尾盤窗口，約再等 {wait_min:.0f} 分鐘...")
+        last_bar = ""
         while datetime.now() < poll_start:
-            time.sleep(5)
+            remaining = int((poll_start - datetime.now()).total_seconds())
+            h, r = divmod(remaining, 3600)
+            m, s = divmod(r, 60)
+            bar = f"\r⏳ 等待尾盤窗口  {h:02d}:{m:02d}:{s:02d}"
+            if bar != last_bar:
+                print(bar, end="", flush=True)
+                last_bar = bar
+            time.sleep(1)
+        print()
 
     has_ref = datetime.now() < start_dt.replace(second=0)
     if has_ref:
