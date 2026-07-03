@@ -17,6 +17,19 @@ def _fetch_json(url: str) -> Optional[dict]:
         return None
 
 
+def _mid_price(m: dict) -> Optional[float]:
+    ask = m.get("a", "")
+    bid = m.get("b", "")
+    try:
+        a = float(ask.split("_")[0]) if ask and ask != "-" else None
+        b = float(bid.split("_")[0]) if bid and bid != "-" else None
+        if a and b:
+            return round((a + b) / 2, 2)
+        return a or b
+    except (ValueError, IndexError):
+        return None
+
+
 def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:
     url = TWSE_REALTIME.format(exchange, stock_id)
     data = _fetch_json(url)
@@ -24,16 +37,21 @@ def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:
         return None
     m = data["msgArray"][0]
 
-    price = m.get("z")
+    z = m.get("z")
+    price = (
+        float(z) if z and z != "-"
+        else _mid_price(m)
+        or (float(m["o"]) if m.get("o") and m["o"] != "-" else None)
+    )
     return {
-        "price": float(price) if price and price != "-" else None,
-        "open": float(m.get("o", 0)) if m.get("o") else None,
-        "high": float(m.get("h", 0)) if m.get("h") else None,
-        "low": float(m.get("l", 0)) if m.get("l") else None,
-        "prev_close": float(m.get("y", 0)) if m.get("y") else None,
+        "price": price,
+        "open": float(m.get("o", 0)) if m.get("o") and m["o"] != "-" else None,
+        "high": float(m.get("h", 0)) if m.get("h") and m["h"] != "-" else None,
+        "low": float(m.get("l", 0)) if m.get("l") and m["l"] != "-" else None,
+        "prev_close": float(m.get("y", 0)) if m.get("y") and m["y"] != "-" else None,
         "name": m.get("n", ""),
         "time": m.get("t", ""),
-        "volume": int(m.get("v", 0)) if m.get("v") else 0,
+        "volume": int(m.get("v", 0)) if m.get("v") and m["v"] != "-" else 0,
     }
 
 

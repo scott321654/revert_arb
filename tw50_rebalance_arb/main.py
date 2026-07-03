@@ -12,7 +12,8 @@
   python3 run.py positions                         查看目前持倉
 """
 import sys
-from datetime import date
+import time
+from datetime import date, datetime
 
 from .schedule import quarterly_dates, next_effective_date, is_effective_today
 from .signal import evaluate
@@ -180,36 +181,59 @@ def cmd_monitor():
         return
 
     stock_id = sys.argv[2].strip()
-    print(f"📡 正在從證交所查詢 {stock_id} 即時報價...")
 
-    quote = current_price(stock_id)
-    if not quote or quote["price"] is None:
-        print("❌ 無法取得報價，請改用 python3 run.py check 手動輸入")
+    entry_start, entry_end = STRATEGY["entry_window"]
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
+    end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
+
+    if now < start_dt:
+        wait_min = (start_dt - now).total_seconds() / 60
+        print(f"⏳ 等待進場窗口 ({entry_start}~{entry_end})，約再等 {wait_min:.0f} 分鐘...")
+        while datetime.now() < start_dt:
+            time.sleep(5)
+        print("⏰ 進場窗口到了！")
+    elif now > end_dt:
+        print(f"⚠️  已過進場窗口 ({entry_start}~{entry_end})，資料可能已非尾盤報價")
+
+    print(f"📡 正在查詢 {stock_id} 13:25 基準價...")
+    ref_quote = current_price(stock_id)
+    if not ref_quote or ref_quote["price"] is None:
+        print("❌ 無法取得13:25基準報價")
         return
+    ref_price = ref_quote["price"]
+    stock_name = ref_quote["name"] or lookup_name(stock_id)
+    print(f"✅ 13:25 基準價: {ref_price}")
+    print(f"   昨收: {ref_quote['prev_close']}")
+    print()
 
-    stock_name = quote["name"] or lookup_name(stock_id)
+    now2 = datetime.now()
+    if now2 < end_dt:
+        remaining = (end_dt - now2).total_seconds()
+        if remaining > 0:
+            print(f"⏳ 等待 13:30 收盤價，約再等 {remaining:.0f} 秒...")
+            time.sleep(remaining)
+
+    print(f"📡 查詢 {stock_id} 13:30 收盤價...")
+    final_quote = current_price(stock_id)
+    if not final_quote or final_quote["price"] is None:
+        print("❌ 無法取得13:30收盤報價")
+        return
+    final_price = final_quote["price"]
+
+    day_change = round((final_price - ref_quote["prev_close"]) / ref_quote["prev_close"] * 100, 2)
+    deviation = round((final_price - ref_price) / ref_price * 100, 2)
+
     print(f"✅ {stock_id} {stock_name}")
-    print(f"   現價: {quote['price']}")
-    print(f"   昨收: {quote['prev_close']}")
-    print(f"   今日: 開 {quote['open']} 高 {quote['high']} 低 {quote['low']}")
+    print(f"   13:25 基準: {ref_price}")
+    print(f"   13:30 收盤: {final_price}")
+    print(f"   尾盤5分鐘偏離度: {deviation:+.2f}%")
+    print(f"   今日漲跌(對昨收): {day_change:+.2f}%")
     print()
 
-    day_change = round((quote["price"] - quote["prev_close"]) / quote["prev_close"] * 100, 2)
-    print(f"📊 今日漲跌: {day_change:+.2f}%")
-    print()
-
-    deviation = day_change
-    if deviation < 0 and abs(deviation) > 0.5:
-        print(f"   今日收跌 {deviation:.2f}%，符合超跌方向")
-        override = input(f"   尾盤5分鐘偏離度可手動修正 (Enter = 沿用 {deviation}%): ").strip()
-        if override:
-            try:
-                deviation = float(override)
-            except ValueError:
-                pass
-        print(f"   採用偏離度: {deviation:+.2f}%")
-    elif deviation >= 0:
-        print(f"⚠️  今日收漲，不符合超跌條件 (偏離度 {deviation:+.2f}%)")
+    if deviation >= 0:
+        print(f"⚠️  尾盤未下跌 (偏離度 {deviation:+.2f}%)，不符合超跌條件")
         override = input("   仍想手動輸入尾盤跌幅？(輸入負值, Enter跳過): ").strip()
         if override:
             try:
@@ -220,6 +244,15 @@ def cmd_monitor():
         else:
             print("⛔ 跳過")
             return
+    else:
+        print(f"   尾盤下跌 {deviation:.2f}%，符合超跌方向")
+        override = input(f"   可手動修正偏離度 (Enter = 沿用 {deviation}%): ").strip()
+        if override:
+            try:
+                deviation = float(override)
+            except ValueError:
+                pass
+        print(f"   採用偏離度: {deviation:+.2f}%")
 
     adj = AdjustmentList()
     event = adj.get_event(stock_id)
@@ -249,10 +282,6 @@ def cmd_monitor():
         except ValueError:
             print("❌ 無效")
             return
-
-    if deviation >= 0:
-        print("⛔ 未下跌，不進場")
-        return
 
     short_interest = None
     si = input("融券比率 (選填, Enter跳過): ").strip()
