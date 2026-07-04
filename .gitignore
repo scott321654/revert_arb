@@ -3,3 +3,5 @@ __pycache__/
 *.pyo
 trades.json
 adjustment.json
+stock_names.json
+venv/

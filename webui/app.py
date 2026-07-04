@@ -21,7 +21,7 @@ from tw50_rebalance_arb.schedule import quarterly_dates, next_effective_date, is
 from tw50_rebalance_arb.signal import evaluate
 from tw50_rebalance_arb.journal import TradeJournal
 from tw50_rebalance_arb.config import STRATEGY, COST
-from tw50_rebalance_arb.stocks import lookup_name, STOCK_NAMES
+from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks
 from tw50_rebalance_arb.adjustment import AdjustmentList
 from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today
 
@@ -91,7 +91,7 @@ def adjust():
         adj.set(quarter=quarter, removed=removed, added=added, reweight=reweight)
         flash("已儲存調整名單", "success")
         return redirect(url_for("adjust"))
-    return render_template("adjust.html", adj=adj, stocks=sorted(STOCK_NAMES.items()))
+    return render_template("adjust.html", adj=adj, stocks=sorted(get_all_stocks().items()))
 
 
 @app.route("/check", methods=["GET", "POST"])
@@ -106,14 +106,14 @@ def check():
 
         if not stock_id or not deviation or not volatility:
             flash("請填入股票代號、尾盤跌幅與波動率", "danger")
-            return render_template("check.html", result=None, stocks=sorted(STOCK_NAMES.items()), STRATEGY=STRATEGY)
+            return render_template("check.html", result=None, stocks=sorted(get_all_stocks().items()), STRATEGY=STRATEGY)
 
         try:
             dev = float(deviation)
             vol = float(volatility)
         except ValueError:
             flash("跌幅與波動率請輸入數字", "danger")
-            return render_template("check.html", result=None, stocks=sorted(STOCK_NAMES.items()), STRATEGY=STRATEGY)
+            return render_template("check.html", result=None, stocks=sorted(get_all_stocks().items()), STRATEGY=STRATEGY)
 
         stock_name = lookup_name(stock_id) or stock_id
         adj_obj = AdjustmentList()
@@ -132,9 +132,9 @@ def check():
             zscore_threshold=STRATEGY["zscore_threshold"],
         )
         result = sig
-        return render_template("check.html", result=result, form=request.form, stocks=sorted(STOCK_NAMES.items()), STRATEGY=STRATEGY)
+        return render_template("check.html", result=result, form=request.form, stocks=sorted(get_all_stocks().items()), STRATEGY=STRATEGY)
 
-    return render_template("check.html", result=None, stocks=sorted(STOCK_NAMES.items()), STRATEGY=STRATEGY)
+    return render_template("check.html", result=None, stocks=sorted(get_all_stocks().items()), STRATEGY=STRATEGY)
 
 
 @app.route("/record_entry", methods=["POST"])
@@ -224,7 +224,7 @@ def summary_clear():
 def monitor():
     adj = AdjustmentList()
     targets = adj.data.get("removed", []) + adj.data.get("reweight", [])
-    return render_template("monitor.html", targets=targets, stocks=sorted(STOCK_NAMES.items()),
+    return render_template("monitor.html", targets=targets, stocks=sorted(get_all_stocks().items()),
                            monitor_state=monitor_state, is_effective=is_effective_today(),
                            market_open=is_market_open_today())
 
@@ -378,6 +378,14 @@ def api_monitor_start():
 @app.route("/api/monitor/status")
 def api_monitor_status():
     return jsonify(monitor_state)
+
+
+@app.route("/api/refresh_stocks", methods=["POST"])
+def api_refresh_stocks():
+    result = refresh_stocks()
+    if result:
+        return jsonify({"status": "ok", "count": len(result)})
+    return jsonify({"error": "無法從證交所取得資料"}), 400
 
 
 @app.route("/api/monitor/stop", methods=["POST"])
