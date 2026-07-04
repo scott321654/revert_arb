@@ -23,7 +23,7 @@ from tw50_rebalance_arb.journal import TradeJournal
 from tw50_rebalance_arb.config import STRATEGY, COST
 from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50
 from tw50_rebalance_arb.adjustment import AdjustmentList
-from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today
+from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -91,7 +91,9 @@ def adjust():
         adj.set(quarter=quarter, removed=removed, added=added, reweight=reweight)
         flash("已儲存調整名單", "success")
         return redirect(url_for("adjust"))
-    return render_template("adjust.html", adj=adj, stocks=sorted(get_all_stocks().items()), stock_dict=get_all_stocks())
+    priority = adj.data.get("removed", []) + adj.data.get("added", []) + adj.data.get("reweight", [])
+    prices = fetch_all_prices(priority_codes=priority or None)
+    return render_template("adjust.html", adj=adj, stocks=sorted(get_all_stocks().items()), stock_dict=get_all_stocks(), prices=prices)
 
 
 @app.route("/check", methods=["GET", "POST"])
@@ -399,6 +401,14 @@ def api_tw50_compare():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": f"伺服器錯誤: {e}"}), 500
+
+
+@app.route("/api/prices", methods=["POST"])
+def api_prices():
+    codes = (request.json or {}).get("codes", [])
+    if not codes or not isinstance(codes, list):
+        return jsonify({})
+    return jsonify(_fetch_realtime_batch(codes))
 
 
 @app.route("/api/monitor/stop", methods=["POST"])

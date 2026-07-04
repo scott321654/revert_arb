@@ -53,6 +53,7 @@
         <h6>上市股票 <small class="text-muted" id="targetHint">（點選加入 → 剔除）</small>
           <button class="btn btn-sm btn-outline-secondary float-end" onclick="refreshStocks()">🔄 重新抓取</button>
         </h6>
+        <div class="small text-muted mb-1">高亮股票每 30 秒即時更新；未高亮顯示日收盤價。因 PythonAnywhere 免費版 CPU 配額限制，不全部即時輪詢。</div>
         <div class="btn-group btn-group-sm mb-2">
           <button type="button" class="btn btn-outline-secondary active" onclick="filterStocks('all', this)">全部</button>
           <button type="button" class="btn btn-outline-danger" onclick="filterStocks('added', this)">納入</button>
@@ -60,15 +61,25 @@
         </div>
         <div style="max-height:370px;overflow-y:auto">
           <table class="table table-sm table-hover">
+            <thead class="table-light">
+              <tr><th style="width:60px">代號</th><th>名稱</th><th class="text-end" style="width:80px">成交價</th><th class="text-end" style="width:70px">漲跌幅</th></tr>
+            </thead>
+            <tbody>
             {% for code, name in stocks %}
-            <tr data-code="{{ code }}" style="cursor:pointer" onclick="addToActive('{{ code }}')"
+            {% set p = prices.get(code, {}) %}
+            <tr data-code="{{ code }}" data-price="{{ p.get('price', '') }}" style="cursor:pointer" onclick="addToActive('{{ code }}')"
               {% if code in adj.data.added %}class="table-danger"
               {% elif code in adj.data.removed %}class="table-success"
               {% elif code in adj.data.reweight %}class="table-warning"{% endif %}>
               <td class="text-muted" style="width:60px">{{ code }}</td>
               <td>{{ name }}</td>
+              <td class="text-end">{{ p.get('price', '')|fmt if p.get('price') else '-' }}</td>
+              <td class="text-end {% if p.get('change_pct', 0) > 0 %}text-danger{% elif p.get('change_pct', 0) < 0 %}text-success{% endif %}">
+                {% if p.get('change_pct') is not none %}{{ p.get('change_pct',0)|pct }}{% else %}-{% endif %}
+              </td>
             </tr>
             {% endfor %}
+            </tbody>
           </table>
         </div>
       </div>
@@ -172,6 +183,59 @@ function autoCompare() {
     });
 }
 
+let priceTimer = null;
+
+function getHighlightedCodes() {
+  const codes = [];
+  document.querySelectorAll('tr[data-code].table-danger, tr[data-code].table-success, tr[data-code].table-warning').forEach(tr => {
+    codes.push(tr.dataset.code);
+  });
+  return codes;
+}
+
+function refreshPrices() {
+  const codes = getHighlightedCodes();
+  if (!codes.length) return;
+  fetch('/api/prices', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({codes})
+  })
+  .then(r => r.json())
+  .then(data => {
+    for (const [code, p] of Object.entries(data)) {
+      const row = document.querySelector(`tr[data-code="${code}"]`);
+      if (!row || !p.price) continue;
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 4) {
+        cells[2].textContent = p.price.toFixed ? p.price.toFixed(2) : p.price;
+        cells[3].textContent = (p.change_pct >= 0 ? '+' : '') + p.change_pct.toFixed(2) + '%';
+        cells[3].className = 'text-end ' + (p.change_pct > 0 ? 'text-danger' : p.change_pct < 0 ? 'text-success' : '');
+      }
+    }
+  })
+  .catch(() => {});
+}
+
+function startPricePolling() {
+  if (priceTimer) clearInterval(priceTimer);
+  priceTimer = setInterval(refreshPrices, 30000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  updateHighlights();
+  startPricePolling();
+});
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && priceTimer) {
+    clearInterval(priceTimer);
+    priceTimer = null;
+  } else if (!document.hidden && !priceTimer) {
+    startPricePolling();
+  }
+});
+
 function filterStocks(mode, btn) {
   document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -184,6 +248,6 @@ function filterStocks(mode, btn) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', updateHighlights);
+
 </script>
 {% endblock %}

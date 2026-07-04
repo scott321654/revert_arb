@@ -67,6 +67,72 @@ def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:
     }
 
 
+TWSE_DAY_ALL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+
+
+def _parse_day_all(data: list) -> dict:
+    result = {}
+    for item in data:
+        code = item.get("Code", "")
+        close = item.get("ClosingPrice", "")
+        change = item.get("Change", "0")
+        try:
+            p = float(close)
+            ch = float(change)
+            prev = p - ch
+            chg_pct = (ch / prev * 100) if prev else 0
+            result[code] = {"price": p, "change": ch, "change_pct": round(chg_pct, 2)}
+        except (ValueError, ZeroDivisionError):
+            pass
+    return result
+
+
+def _fetch_realtime_batch(codes: list) -> dict:
+    if not codes:
+        return {}
+    batch = "|".join(f"tse_{c}.tw" for c in codes)
+    url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch={batch}&json=1"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+    except Exception:
+        return {}
+
+    result = {}
+    for m in data.get("msgArray", []):
+        code = m.get("c", "")
+        z = m.get("z", "-")
+        y = m.get("y", "-")
+        try:
+            price = float(z) if z != "-" else None
+            prev = float(y) if y != "-" else None
+            if price and prev:
+                chg = price - prev
+                chg_pct = chg / prev * 100
+                result[code] = {"price": price, "change": round(chg, 2), "change_pct": round(chg_pct, 2)}
+        except (ValueError, TypeError):
+            pass
+    return result
+
+
+def fetch_all_prices(priority_codes: list = None) -> dict:
+    try:
+        req = urllib.request.Request(TWSE_DAY_ALL, headers={"User-Agent": "Mozilla/5.0"})
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+    except Exception:
+        return {}
+
+    result = _parse_day_all(data)
+
+    if priority_codes and is_market_open_today():
+        realtime = _fetch_realtime_batch(priority_codes)
+        result.update(realtime)
+
+    return result
+
+
 def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
     today = date.today()
     ranges = []
