@@ -36,6 +36,18 @@
     </div>
   </div>
   <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-body py-2">
+        <div class="d-flex gap-3 small">
+          <div><span class="badge bg-danger">納入</span>
+            {% for code in adj.data.added %}{{ code }} {{ stock_dict.get(code, '') }}{% if not loop.last %}, {% endif %}{% else %}無{% endfor %}
+          </div>
+          <div><span class="badge bg-success">剔除</span>
+            {% for code in adj.data.removed %}{{ code }} {{ stock_dict.get(code, '') }}{% if not loop.last %}, {% endif %}{% else %}無{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-body">
         <h6>上市股票 <small class="text-muted" id="targetHint">（點選加入 → 剔除）</small>
@@ -44,7 +56,10 @@
         <div style="max-height:400px;overflow-y:auto">
           <table class="table table-sm table-hover">
             {% for code, name in stocks %}
-            <tr style="cursor:pointer" onclick="addToActive('{{ code }}')">
+            <tr style="cursor:pointer" onclick="addToActive('{{ code }}')"
+              {% if code in adj.data.added %}class="table-danger"
+              {% elif code in adj.data.removed %}class="table-success"
+              {% elif code in adj.data.reweight %}class="table-warning"{% endif %}>
               <td class="text-muted" style="width:60px">{{ code }}</td>
               <td>{{ name }}</td>
             </tr>

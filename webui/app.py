@@ -91,7 +91,7 @@ def adjust():
         adj.set(quarter=quarter, removed=removed, added=added, reweight=reweight)
         flash("已儲存調整名單", "success")
         return redirect(url_for("adjust"))
-    return render_template("adjust.html", adj=adj, stocks=sorted(get_all_stocks().items()))
+    return render_template("adjust.html", adj=adj, stocks=sorted(get_all_stocks().items()), stock_dict=get_all_stocks())
 
 
 @app.route("/check", methods=["GET", "POST"])
