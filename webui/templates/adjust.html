@@ -53,10 +53,15 @@
         <h6>上市股票 <small class="text-muted" id="targetHint">（點選加入 → 剔除）</small>
           <button class="btn btn-sm btn-outline-secondary float-end" onclick="refreshStocks()">🔄 重新抓取</button>
         </h6>
-        <div style="max-height:400px;overflow-y:auto">
+        <div class="btn-group btn-group-sm mb-2">
+          <button type="button" class="btn btn-outline-secondary active" onclick="filterStocks('all', this)">全部</button>
+          <button type="button" class="btn btn-outline-danger" onclick="filterStocks('added', this)">納入</button>
+          <button type="button" class="btn btn-outline-success" onclick="filterStocks('removed', this)">剔除</button>
+        </div>
+        <div style="max-height:370px;overflow-y:auto">
           <table class="table table-sm table-hover">
             {% for code, name in stocks %}
-            <tr style="cursor:pointer" onclick="addToActive('{{ code }}')"
+            <tr data-code="{{ code }}" style="cursor:pointer" onclick="addToActive('{{ code }}')"
               {% if code in adj.data.added %}class="table-danger"
               {% elif code in adj.data.removed %}class="table-success"
               {% elif code in adj.data.reweight %}class="table-warning"{% endif %}>
@@ -95,6 +100,7 @@ function addToActive(code) {
 
 function clearForm() {
   document.querySelectorAll('input[name="quarter"], input[name="removed"], input[name="added"], input[name="reweight"]').forEach(el => el.value = '');
+  updateHighlights();
 }
 
 function refreshStocks() {
@@ -109,6 +115,31 @@ function refreshStocks() {
       }
     })
     .catch(() => alert('❌ 連線失敗'));
+}
+
+function updateHighlights() {
+  const removed = document.querySelector('input[name="removed"]').value.split(',').map(s => s.trim()).filter(Boolean);
+  const added = document.querySelector('input[name="added"]').value.split(',').map(s => s.trim()).filter(Boolean);
+  const reweight = document.querySelector('input[name="reweight"]').value.split(',').map(s => s.trim()).filter(Boolean);
+
+  document.querySelectorAll('tr[data-code]').forEach(row => {
+    const code = row.dataset.code;
+    row.className = '';
+    if (added.includes(code)) row.classList.add('table-danger');
+    else if (removed.includes(code)) row.classList.add('table-success');
+    else if (reweight.includes(code)) row.classList.add('table-warning');
+  });
+
+  const badgeAdded = document.querySelector('.badge.bg-danger')?.parentElement;
+  const badgeRemoved = document.querySelector('.badge.bg-success')?.parentElement;
+  if (badgeAdded) {
+    const names = added.map(c => { const r = document.querySelector(`tr[data-code="${c}"]`); return c + ' ' + (r?.cells?.[1]?.textContent || ''); }).join(', ');
+    badgeAdded.innerHTML = '<span class="badge bg-danger">納入</span> ' + (names || '無');
+  }
+  if (badgeRemoved) {
+    const names = removed.map(c => { const r = document.querySelector(`tr[data-code="${c}"]`); return c + ' ' + (r?.cells?.[1]?.textContent || ''); }).join(', ');
+    badgeRemoved.innerHTML = '<span class="badge bg-success">剔除</span> ' + (names || '無');
+  }
 }
 
 function autoCompare() {
@@ -129,6 +160,7 @@ function autoCompare() {
       document.querySelector('input[name="quarter"]').value = data.data_quarter;
       document.querySelector('input[name="removed"]').value = (data.removed || []).join(',');
       document.querySelector('input[name="added"]').value = (data.added || []).join(',');
+      updateHighlights();
       if (data.note) {
         status.innerHTML = `⚠️ ${data.note}`;
       } else {
@@ -139,5 +171,19 @@ function autoCompare() {
       status.innerHTML = `❌ ${err.message || '連線失敗'}`;
     });
 }
+
+function filterStocks(mode, btn) {
+  document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('tr[data-code]').forEach(row => {
+    if (mode === 'all') { row.style.display = ''; return; }
+    const isRed = row.classList.contains('table-danger');
+    const isGreen = row.classList.contains('table-success');
+    if (mode === 'added') row.style.display = isRed ? '' : 'none';
+    if (mode === 'removed') row.style.display = isGreen ? '' : 'none';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', updateHighlights);
 </script>
 {% endblock %}
