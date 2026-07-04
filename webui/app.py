@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 import sys
 import os
+
+os.environ["TZ"] = "Asia/Taipei"
+try:
+    import time as _time_mod
+    _time_mod.tzset()
+except AttributeError:
+    pass
+
 import json
 import time
 import threading
@@ -42,8 +50,9 @@ monitor_state = {
     "refs": {},
     "finals": {},
     "results": [],
-    "phase": "",  # waiting / capturing_ref / waiting_final / capturing_final / done
+    "phase": "",  # waiting / capturing_ref / waiting_final / capturing_final / done / cancelled
     "log": [],
+    "cancel": False,
 }
 
 
@@ -235,6 +244,7 @@ def api_monitor_start():
     monitor_state["results"] = []
     monitor_state["phase"] = "capturing_ref"
     monitor_state["log"] = []
+    monitor_state["cancel"] = False
     _log(f"開始監控 {len(targets)} 檔標的: {', '.join(targets)}")
 
     def _run():
@@ -248,7 +258,14 @@ def api_monitor_start():
                 _log(f"等待 13:25 (約 {int(wait_sec)} 秒)...")
                 monitor_state["phase"] = "waiting"
                 while datetime.now() < start_dt:
+                    if monitor_state["cancel"]:
+                        _log("已取消")
+                        return
                     time.sleep(1)
+
+            if monitor_state["cancel"]:
+                _log("已取消")
+                return
 
             monitor_state["phase"] = "capturing_ref"
             _log("捕捉 13:25 基準價...")
@@ -275,6 +292,9 @@ def api_monitor_start():
                 _log(f"等待 13:30 收盤價 (約 {int(wait_sec)} 秒)...")
                 monitor_state["phase"] = "waiting_final"
                 while datetime.now() < end_dt:
+                    if monitor_state["cancel"]:
+                        _log("已取消")
+                        return
                     time.sleep(1)
 
             monitor_state["phase"] = "capturing_final"
@@ -332,8 +352,9 @@ def api_monitor_start():
                 })
                 _log(f"  {sid} {ref['name']}: 偏差 {deviation:+.2f}% Z={sig.zscore:.1f}σ {'✅' if sig.actionable else '❌'}")
 
-            monitor_state["phase"] = "done"
-            _log("監控完成")
+            if not monitor_state["cancel"]:
+                monitor_state["phase"] = "done"
+                _log("監控完成")
         except Exception as e:
             _log(f"錯誤: {e}")
         finally:
@@ -346,6 +367,15 @@ def api_monitor_start():
 @app.route("/api/monitor/status")
 def api_monitor_status():
     return jsonify(monitor_state)
+
+
+@app.route("/api/monitor/stop", methods=["POST"])
+def api_monitor_stop():
+    if not monitor_state["running"]:
+        return jsonify({"error": "not running"}), 400
+    monitor_state["cancel"] = True
+    _log("正在停止...")
+    return jsonify({"status": "stopped"})
 
 
 if __name__ == "__main__":

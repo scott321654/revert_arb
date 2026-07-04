@@ -14,9 +14,12 @@
         <h6>批次監控</h6>
         {% if targets %}
           <p class="text-muted small mb-2">{{ targets|length }} 檔: {{ targets|join(', ') }}</p>
-          <button class="btn btn-success w-100" onclick="startMonitor()" id="btnStart" {% if monitor_state.running %}disabled{% endif %}>
-            {{ '執行中...' if monitor_state.running else '▶ 開始監控' }}
-          </button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success flex-fill" onclick="startMonitor()" id="btnStart" {% if monitor_state.running %}disabled{% endif %}>
+              {{ '執行中...' if monitor_state.running else '▶ 開始監控' }}
+            </button>
+            <button class="btn btn-danger {% if not monitor_state.running %}d-none{% endif %}" onclick="stopMonitor()" id="btnStop">⏹ 停止</button>
+          </div>
         {% else %}
           <div class="alert alert-info mb-0 py-2 small">請先到「<a href="/adjust">調整名單</a>」設定標的。</div>
         {% endif %}
@@ -94,9 +97,16 @@ function startMonitor() {
     .then(data => {
       document.getElementById('btnStart').disabled = true;
       document.getElementById('btnStart').textContent = '執行中...';
+      document.getElementById('btnStop').classList.remove('d-none');
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(pollStatus, 1000);
     });
+}
+
+function stopMonitor() {
+  fetch('/api/monitor/stop', { method: 'POST' });
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnStop').textContent = '停止中...';
 }
 
 function pollStatus() {
@@ -108,11 +118,13 @@ function pollStatus() {
         logEl.textContent = data.log.join('\n');
         logEl.scrollTop = logEl.scrollHeight;
       }
-      if (data.phase === 'done') {
+      if (data.phase === 'done' || data.phase === 'cancelled' || (!data.running && data.log.length > 0)) {
         clearInterval(pollInterval);
         document.getElementById('btnStart').disabled = false;
         document.getElementById('btnStart').textContent = '▶ 開始監控';
-        location.reload();
+        document.getElementById('btnStop').classList.add('d-none');
+        document.getElementById('btnStop').disabled = false;
+        document.getElementById('btnStop').textContent = '⏹ 停止';
       }
     });
 }
