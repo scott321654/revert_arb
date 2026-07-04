@@ -210,6 +210,15 @@ def summary_view():
     return render_template("summary.html", stats=stats, trades=closed)
 
 
+@app.route("/summary/clear", methods=["POST"])
+def summary_clear():
+    journal = TradeJournal()
+    journal.trades = []
+    journal._save()
+    flash("已清除所有交易紀錄", "success")
+    return redirect(url_for("summary_view"))
+
+
 @app.route("/monitor")
 def monitor():
     adj = AdjustmentList()

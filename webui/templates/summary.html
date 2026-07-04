@@ -72,4 +72,8 @@
   </div>
 </div>
 {% endif %}
+
+<form method="POST" action="/summary/clear" onsubmit="return confirm('確定清除所有交易紀錄？此動作無法復原。')">
+  <button type="submit" class="btn btn-outline-danger btn-sm">🗑 清除所有交易紀錄</button>
+</form>
 {% endblock %}
