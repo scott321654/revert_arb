@@ -35,11 +35,11 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-body">
-        <h6>台灣50 成分股 <small class="text-muted">（點選加入剔除）</small></h6>
+        <h6>台灣50 成分股 <small class="text-muted" id="targetHint">（點選加入 → 剔除）</small></h6>
         <div style="max-height:400px;overflow-y:auto">
           <table class="table table-sm table-hover">
             {% for code, name in stocks %}
-            <tr style="cursor:pointer" onclick="addRemoved('{{ code }}')">
+            <tr style="cursor:pointer" onclick="addToActive('{{ code }}')">
               <td class="text-muted" style="width:60px">{{ code }}</td>
               <td>{{ name }}</td>
             </tr>
@@ -52,14 +52,32 @@
 </div>
 
 <script>
-function addRemoved(code) {
-  const input = document.querySelector('input[name="removed"]');
+const FIELD_NAMES = { removed: '剔除', added: '納入', reweight: '調降' };
+
+function getActiveField() {
+  const el = document.activeElement;
+  const name = el && el.name;
+  if (name === 'removed' || name === 'added' || name === 'reweight') return name;
+  return 'removed';
+}
+
+function addToActive(code) {
+  const field = getActiveField();
+  const input = document.querySelector(`input[name="${field}"]`);
   const vals = input.value.split(',').map(s => s.trim()).filter(Boolean);
   if (!vals.includes(code)) {
     vals.push(code);
     input.value = vals.join(',');
   }
+  input.focus();
 }
+
+document.addEventListener('focus', function(e) {
+  const name = e.target && e.target.name;
+  if (name === 'removed' || name === 'added' || name === 'reweight') {
+    document.getElementById('targetHint').textContent = `（點選加入 → ${FIELD_NAMES[name]}）`;
+  }
+}, true);
 
 function clearForm() {
   document.querySelectorAll('input[name="quarter"], input[name="removed"], input[name="added"], input[name="reweight"]').forEach(el => el.value = '');
