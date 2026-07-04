@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}調整名單 — 台灣50尾盤套利{% endblock %}
+{% block content %}
+<h5 class="mb-3">✏️ 輸入本次調整名單</h5>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label">季度</label>
+            <input class="form-control" name="quarter" placeholder="2026Q3" value="{{ adj.data.quarter }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">被剔除的股票代號（逗號分隔）</label>
+            <input class="form-control" name="removed" placeholder="1301,2002" value="{{ ','.join(adj.data.removed) }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">新納入的股票代號（逗號分隔）</label>
+            <input class="form-control" name="added" placeholder="3037,3665" value="{{ ','.join(adj.data.added) }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">權重調降（選填）</label>
+            <input class="form-control" name="reweight" placeholder="2330,2317" value="{{ ','.join(adj.data.reweight) }}">
+          </div>
+          <button type="submit" class="btn btn-primary w-100 w-md-auto">儲存</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6>台灣50 成分股 <small class="text-muted">（點選加入剔除）</small></h6>
+        <div style="max-height:400px;overflow-y:auto">
+          <table class="table table-sm table-hover">
+            {% for code, name in stocks %}
+            <tr style="cursor:pointer" onclick="addRemoved('{{ code }}')">
+              <td class="text-muted" style="width:60px">{{ code }}</td>
+              <td>{{ name }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function addRemoved(code) {
+  const input = document.querySelector('input[name="removed"]');
+  const vals = input.value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!vals.includes(code)) {
+    vals.push(code);
+    input.value = vals.join(',');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}持倉 — 台灣50尾盤套利{% endblock %}
+{% block content %}
+<h5 class="mb-3">📂 目前持倉</h5>
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if trades %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>股票</th>
+            <th>事件</th>
+            <th>入場日期</th>
+            <th>價格</th>
+            <th>張數</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in trades %}
+          <tr>
+            <td><strong>{{ t.stock_id }}</strong> {{ t.stock_name }}</td>
+            <td>{{ t.event }}</td>
+            <td>{{ t.entry_date }} {{ t.entry_time }}</td>
+            <td>{{ t.entry_price }}</td>
+            <td>{{ t.shares // 1000 }}</td>
+            <td><a href="/exit" class="btn btn-sm btn-outline-danger">平倉</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">目前無持倉</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if trades %}
+<div class="mt-2">
+  <a href="/exit" class="btn btn-danger w-100 w-md-auto">前往平倉</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}時程 — 台灣50尾盤套利{% endblock %}
+{% block content %}
+<h5 class="mb-3">📅 季度調整時程</h5>
+
+<div class="card">
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>季度</th>
+          <th>審核日</th>
+          <th>生效日</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in quarters %}
+        <tr class="{% if q.effective_date == today %}table-primary{% endif %}">
+          <td><strong>{{ q.quarter }}</strong></td>
+          <td>{{ q.review_date }}</td>
+          <td>
+            <strong>{{ q.effective_date }}</strong>
+          </td>
+          <td>
+            {% if q.effective_date == today %}
+              <span class="badge bg-success">今日</span>
+            {% elif q.effective_date < today %}
+              <span class="badge bg-secondary">已過</span>
+            {% elif q.effective_date == nxt.effective_date %}
+              <span class="badge bg-primary">下次</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

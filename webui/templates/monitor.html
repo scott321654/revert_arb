@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}監控 — 台灣50尾盤套利{% endblock %}
+{% block content %}
+<h5 class="mb-3">📡 尾盤監控</h5>
+
+{% if not is_effective %}
+<div class="alert alert-warning py-2">⚠️ 今天不是生效日，僅供測試。</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6>批次監控</h6>
+        {% if targets %}
+          <p class="text-muted small mb-2">{{ targets|length }} 檔: {{ targets|join(', ') }}</p>
+          <button class="btn btn-success w-100" onclick="startMonitor()" id="btnStart" {% if monitor_state.running %}disabled{% endif %}>
+            {{ '執行中...' if monitor_state.running else '▶ 開始監控' }}
+          </button>
+        {% else %}
+          <div class="alert alert-info mb-0 py-2 small">請先到「<a href="/adjust">調整名單</a>」設定標的。</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6>單檔查價</h6>
+        <div class="input-group mb-2">
+          <select class="form-select" id="singleStock">
+            <option value="">選擇股票</option>
+            {% for code, name in stocks %}
+            <option value="{{ code }}">{{ code }} {{ name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-outline-primary" onclick="fetchSinglePrice()">查詢</button>
+        </div>
+        <div id="singlePriceResult" class="text-muted small"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h6>📋 執行日誌</h6>
+    <div class="monitor-log" id="monitorLog">尚未開始監控</div>
+  </div>
+</div>
+
+{% if monitor_state.results %}
+<div class="card">
+  <div class="card-body">
+    <h6>📊 監控結果</h6>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>股票</th>
+            <th>事件</th>
+            <th>基準</th>
+            <th>收盤</th>
+            <th>偏離</th>
+            <th>Z</th>
+            <th>結果</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in monitor_state.results %}
+          <tr class="{% if r.actionable %}table-success{% endif %}">
+            <td><strong>{{ r.stock_id }}</strong> {{ r.stock_name }}</td>
+            <td>{{ r.event }}</td>
+            <td>{{ r.ref_price }}</td>
+            <td>{{ r.final_price }}</td>
+            <td class="{% if r.deviation < 0 %}text-success{% endif %}">{{ r.deviation|pct }}</td>
+            <td class="{% if r.zscore >= 2.5 %}zscore-high{% else %}zscore-low{% endif %}">{{ r.zscore|fmt(1) }}σ</td>
+            <td>{% if r.actionable %}✅{% else %}❌{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+let pollInterval = null;
+
+function startMonitor() {
+  fetch('/api/monitor/start', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('btnStart').disabled = true;
+      document.getElementById('btnStart').textContent = '執行中...';
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(pollStatus, 1000);
+    });
+}
+
+function pollStatus() {
+  fetch('/api/monitor/status')
+    .then(r => r.json())
+    .then(data => {
+      const logEl = document.getElementById('monitorLog');
+      if (data.log && data.log.length) {
+        logEl.textContent = data.log.join('\n');
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      if (data.phase === 'done') {
+        clearInterval(pollInterval);
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnStart').textContent = '▶ 開始監控';
+        location.reload();
+      }
+    });
+}
+
+function fetchSinglePrice() {
+  const sid = document.getElementById('singleStock').value;
+  if (!sid) return;
+  document.getElementById('singlePriceResult').innerHTML = '查詢中...';
+  fetch('/api/fetch_price', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({stock_id: sid})
+  })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('singlePriceResult').innerHTML =
+        `<strong>${sid}</strong> ${data.name || ''}: 即時價 <strong>${data.price || '無法取得'}</strong>`;
+    })
+    .catch(() => {
+      document.getElementById('singlePriceResult').textContent = '查詢失敗';
+    });
+}
+
+{% if monitor_state.running %}
+pollInterval = setInterval(pollStatus, 1000);
+{% endif %}
+</script>
+{% endblock %}

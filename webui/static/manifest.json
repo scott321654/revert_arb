@@ -1,0 +1,26 @@
+{
+  "name": "TW50 尾盤套利",
+  "short_name": "TW50套利",
+  "description": "台灣50指數成分股調整 — 尾盤均值回歸套利策略",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#2c3e50",
+  "orientation": "portrait",
+  "categories": ["finance", "investment"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

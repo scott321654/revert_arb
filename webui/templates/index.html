@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}儀表板 — 台灣50尾盤套利{% endblock %}
+{% block content %}
+<h5 class="mb-3">📊 儀表板</h5>
+
+<div class="row g-2 g-md-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="number">{{ today }}</div>
+      <div class="label">今日日期</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="number">{{ COST }}%</div>
+      <div class="label">交易成本</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="number">{{ STRATEGY.zscore_threshold }}σ</div>
+      <div class="label">進場門檻</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="number">{{ open_count }}</div>
+      <div class="label">持倉</div>
+    </div>
+  </div>
+</div>
+
+{% if nxt %}
+<div class="card">
+  <div class="card-body">
+    <h6>📅 下次調整</h6>
+    <table class="table table-borderless mb-0">
+      <tr><td style="width:80px">季度</td><td><strong>{{ nxt.quarter }}</strong></td></tr>
+      <tr><td>審核日</td><td>{{ nxt.review_date }}</td></tr>
+      <tr><td>生效日</td><td><strong>{{ nxt.effective_date }}</strong></td></tr>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body">
+    <h6>📋 快速操作</h6>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="/adjust" class="btn btn-outline-primary btn-sm">✏️ 調整名單</a>
+      <a href="/monitor" class="btn btn-outline-success btn-sm">📡 監控</a>
+      <a href="/check" class="btn btn-outline-info btn-sm">🔍 手動檢查</a>
+      <a href="/positions" class="btn btn-outline-warning btn-sm">📂 持倉</a>
+      <a href="/summary" class="btn btn-outline-secondary btn-sm">📈 績效</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

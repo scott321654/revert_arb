@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}平倉 — 台灣50尾盤套利{% endblock %}
+{% block content %}
+<h5 class="mb-3">📤 平倉</h5>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label">選擇持倉</label>
+            <select class="form-select" name="stock_id" required>
+              <option value="">選擇股票</option>
+              {% for t in trades %}
+              <option value="{{ t.stock_id }}">{{ t.stock_id }} {{ t.stock_name }} (入場 {{ t.entry_price }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">出場均價</label>
+            <input class="form-control" name="exit_price" type="number" step="any" placeholder="24.5" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">備註（選填）</label>
+            <input class="form-control" name="note" placeholder="">
+          </div>
+          <button type="submit" class="btn btn-danger w-100 w-md-auto">平倉</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body p-0">
+        <h6 class="px-3 pt-3">目前持倉</h6>
+        {% if trades %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>股票</th>
+                <th>入場價</th>
+                <th>張數</th>
+                <th>日期</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in trades %}
+              <tr>
+                <td>{{ t.stock_id }} {{ t.stock_name }}</td>
+                <td>{{ t.entry_price }}</td>
+                <td>{{ t.shares // 1000 }}</td>
+                <td>{{ t.entry_date }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">目前無持倉</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
