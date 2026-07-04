@@ -21,7 +21,7 @@ from tw50_rebalance_arb.schedule import quarterly_dates, next_effective_date, is
 from tw50_rebalance_arb.signal import evaluate
 from tw50_rebalance_arb.journal import TradeJournal
 from tw50_rebalance_arb.config import STRATEGY, COST
-from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks
+from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50
 from tw50_rebalance_arb.adjustment import AdjustmentList
 from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today
 
@@ -386,6 +386,19 @@ def api_refresh_stocks():
     if result:
         return jsonify({"status": "ok", "count": len(result)})
     return jsonify({"error": "無法從證交所取得資料"}), 400
+
+
+@app.route("/api/tw50/compare", methods=["POST"])
+def api_tw50_compare():
+    try:
+        body = request.get_json(silent=True) or {}
+        quarter = body.get("quarter", "").strip()
+        result = auto_compare_tw50(quarter or None)
+        if "error" in result:
+            return jsonify(result), 400
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"伺服器錯誤: {e}"}), 500
 
 
 @app.route("/api/monitor/stop", methods=["POST"])

@@ -10,25 +10,28 @@
         <form method="POST">
           <div class="mb-3">
             <label class="form-label">季度</label>
-            <input class="form-control" name="quarter" placeholder="2026Q3" value="{{ adj.data.quarter }}">
+            <input class="form-control" name="quarter" placeholder="e.g. 2026Q3" value="{{ adj.data.quarter }}">
           </div>
           <div class="mb-3">
             <label class="form-label">被剔除的股票代號（逗號分隔）</label>
-            <input class="form-control" name="removed" placeholder="1301,2002" value="{{ ','.join(adj.data.removed) }}">
+            <input class="form-control" name="removed" placeholder="e.g. 1301,2002" value="{{ ','.join(adj.data.removed) }}">
           </div>
           <div class="mb-3">
             <label class="form-label">新納入的股票代號（逗號分隔）</label>
-            <input class="form-control" name="added" placeholder="3037,3665" value="{{ ','.join(adj.data.added) }}">
+            <input class="form-control" name="added" placeholder="e.g. 3037,3665" value="{{ ','.join(adj.data.added) }}">
           </div>
           <div class="mb-3">
             <label class="form-label">權重調降（選填）</label>
-            <input class="form-control" name="reweight" placeholder="2330,2317" value="{{ ','.join(adj.data.reweight) }}">
+            <input class="form-control" name="reweight" placeholder="e.g. 2330,2317" value="{{ ','.join(adj.data.reweight) }}">
           </div>
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary flex-fill">儲存</button>
             <button type="button" class="btn btn-outline-danger" onclick="clearForm()">清除</button>
           </div>
         </form>
+        <hr>
+        <button type="button" class="btn btn-outline-success w-100" onclick="autoCompare()">🤖 自動比對（從0050成分股）</button>
+        <div id="compareStatus" class="mt-2 small text-muted"></div>
       </div>
     </div>
   </div>
@@ -91,6 +94,35 @@ function refreshStocks() {
       }
     })
     .catch(() => alert('❌ 連線失敗'));
+}
+
+function autoCompare() {
+  const status = document.getElementById('compareStatus');
+  status.textContent = '⏳ 正在抓取 0050 成分股...';
+  fetch('/api/tw50/compare', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    })
+    .then(r => {
+      if (!r.ok) {
+        return r.json().then(j => { throw new Error(j.error || `HTTP ${r.status}`); });
+      }
+      return r.json();
+    })
+    .then(data => {
+      document.querySelector('input[name="quarter"]').value = data.data_quarter;
+      document.querySelector('input[name="removed"]').value = (data.removed || []).join(',');
+      document.querySelector('input[name="added"]').value = (data.added || []).join(',');
+      if (data.note) {
+        status.innerHTML = `⚠️ ${data.note}`;
+      } else {
+        status.innerHTML = `✅ 比對 ${data.compare_quarter} → ${data.data_quarter}：剔除 ${data.removed.length} 檔、納入 ${data.added.length} 檔`;
+      }
+    })
+    .catch(err => {
+      status.innerHTML = `❌ ${err.message || '連線失敗'}`;
+    });
 }
 </script>
 {% endblock %}

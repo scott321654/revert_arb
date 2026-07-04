@@ -4,4 +4,5 @@ __pycache__/
 trades.json
 adjustment.json
 stock_names.json
+tw50_snapshots.json
 venv/
