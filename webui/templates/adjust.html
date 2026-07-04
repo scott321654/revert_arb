@@ -24,7 +24,10 @@
             <label class="form-label">權重調降（選填）</label>
             <input class="form-control" name="reweight" placeholder="2330,2317" value="{{ ','.join(adj.data.reweight) }}">
           </div>
-          <button type="submit" class="btn btn-primary w-100 w-md-auto">儲存</button>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-fill">儲存</button>
+            <button type="button" class="btn btn-outline-danger" onclick="clearForm()">清除</button>
+          </div>
         </form>
       </div>
     </div>
@@ -56,6 +59,10 @@ function addRemoved(code) {
     vals.push(code);
     input.value = vals.join(',');
   }
+}
+
+function clearForm() {
+  document.querySelectorAll('input[name="quarter"], input[name="removed"], input[name="added"], input[name="reweight"]').forEach(el => el.value = '');
 }
 </script>
 {% endblock %}
