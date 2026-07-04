@@ -1,6 +1,6 @@
 import urllib.request
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 
@@ -28,6 +28,18 @@ def _mid_price(m: dict) -> Optional[float]:
         return a or b
     except (ValueError, IndexError):
         return None
+
+
+def is_market_open_today() -> bool:
+    q = current_price("2330")
+    if not q:
+        return False
+    now_hour = datetime.now().hour
+    if q.get("volume", 0) > 0 and q.get("price"):
+        return True
+    if 9 <= now_hour <= 13 or (now_hour == 13 and datetime.now().minute <= 35):
+        return True
+    return False
 
 
 def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:

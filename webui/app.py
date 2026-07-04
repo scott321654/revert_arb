@@ -23,7 +23,7 @@ from tw50_rebalance_arb.journal import TradeJournal
 from tw50_rebalance_arb.config import STRATEGY, COST
 from tw50_rebalance_arb.stocks import lookup_name, STOCK_NAMES
 from tw50_rebalance_arb.adjustment import AdjustmentList
-from tw50_rebalance_arb.market import current_price, recent_daily_volatility
+from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -66,7 +66,8 @@ def index():
     nxt = next_effective_date(today)
     journal = TradeJournal()
     open_trades = [t for t in journal.trades if t["status"] == "open"]
-    return render_template("index.html", today=today, nxt=nxt, open_count=len(open_trades), COST=COST, STRATEGY=STRATEGY)
+    return render_template("index.html", today=today, nxt=nxt, open_count=len(open_trades), COST=COST, STRATEGY=STRATEGY,
+                           market_open=is_market_open_today())
 
 
 @app.route("/schedule")
@@ -224,7 +225,8 @@ def monitor():
     adj = AdjustmentList()
     targets = adj.data.get("removed", []) + adj.data.get("reweight", [])
     return render_template("monitor.html", targets=targets, stocks=sorted(STOCK_NAMES.items()),
-                           monitor_state=monitor_state, is_effective=is_effective_today())
+                           monitor_state=monitor_state, is_effective=is_effective_today(),
+                           market_open=is_market_open_today())
 
 
 @app.route("/api/fetch_price", methods=["POST"])

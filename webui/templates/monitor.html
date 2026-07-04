@@ -6,6 +6,9 @@
 {% if not is_effective %}
 <div class="alert alert-warning py-2">⚠️ 今天不是生效日，僅供測試。</div>
 {% endif %}
+{% if not market_open %}
+<div class="alert alert-danger py-2">🚫 今天台股休市（國定假日），無法取得報價。</div>
+{% endif %}
 
 <div class="row g-3 mb-3">
   <div class="col-md-6">

@@ -3,6 +3,10 @@
 {% block content %}
 <h5 class="mb-3">📊 儀表板</h5>
 
+{% if not market_open %}
+<div class="alert alert-danger py-2">🚫 今天台股休市</div>
+{% endif %}
+
 <div class="row g-2 g-md-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="card stat-card">
