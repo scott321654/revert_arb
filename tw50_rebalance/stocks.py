@@ -228,7 +228,7 @@ def auto_compare_tw50(quarter_label: str = None) -> dict:
     removed = sorted(previous_set - current_set)
     added = sorted(current_set - previous_set)
 
-    return {
+    result = {
         "data_quarter": data_quarter,
         "compare_quarter": compare_quarter,
         "current_count": len(current),
@@ -236,3 +236,6 @@ def auto_compare_tw50(quarter_label: str = None) -> dict:
         "removed": removed,
         "added": added,
     }
+    if not removed and not added:
+        result["note"] = "本次成分股無變動"
+    return result
