@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="TW50套利">
+  <meta name="apple-mobile-web-app-title" content="TW50 Rebalance">
   <meta name="theme-color" content="#2c3e50">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
@@ -52,13 +52,13 @@
 
   <nav class="navbar-mobile">
     <button class="btn-menu" onclick="toggleSidebar()">☰</button>
-    <span class="brand">📊 TW50 套利</span>
+    <span class="brand">📊 TW50 Rebalance</span>
     <span></span>
   </nav>
 
   <div class="wrapper">
     <aside class="sidebar" id="sidebar">
-      <div class="logo">📊 TW50 套利</div>
+      <div class="logo">📊 TW50 Rebalance</div>
       <nav class="nav flex-column mt-2">
         <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/" onclick="closeSidebar()">儀表板</a>
         <a class="nav-link {% if request.path == '/schedule' %}active{% endif %}" href="/schedule" onclick="closeSidebar()">時程</a>

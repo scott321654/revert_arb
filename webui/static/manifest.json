@@ -1,6 +1,6 @@
 {
-  "name": "TW50 尾盤套利",
-  "short_name": "TW50套利",
+  "name": "TW50 Rebalance",
+  "short_name": "TW50 Rebalance",
   "description": "台灣50指數成分股調整 — 尾盤均值回歸套利策略",
   "start_url": "/",
   "scope": "/",

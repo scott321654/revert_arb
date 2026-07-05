@@ -3,6 +3,6 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from tw50_rebalance_arb.main import main
+from tw50_rebalance.main import main
 
 main()

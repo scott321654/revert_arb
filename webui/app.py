@@ -17,13 +17,13 @@ from datetime import date, datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 
-from tw50_rebalance_arb.schedule import quarterly_dates, next_effective_date, is_effective_today
-from tw50_rebalance_arb.signal import evaluate
-from tw50_rebalance_arb.journal import TradeJournal
-from tw50_rebalance_arb.config import STRATEGY, COST
-from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50, fetch_tw50_holdings
-from tw50_rebalance_arb.adjustment import AdjustmentList
-from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch
+from tw50_rebalance.schedule import quarterly_dates, next_effective_date, is_effective_today
+from tw50_rebalance.signal import evaluate
+from tw50_rebalance.journal import TradeJournal
+from tw50_rebalance.config import STRATEGY, COST
+from tw50_rebalance.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50, fetch_tw50_holdings
+from tw50_rebalance.adjustment import AdjustmentList
+from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
