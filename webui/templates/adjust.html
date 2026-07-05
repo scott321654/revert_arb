@@ -50,8 +50,8 @@
     </div>
     <div class="card">
       <div class="card-body">
-        <h6>上市股票 <small class="text-muted" id="targetHint">（點選加入 → 剔除）</small>
-          <button class="btn btn-sm btn-outline-secondary float-end" onclick="refreshStocks()">🔄 重新抓取</button>
+        <h6>0050 成分股 <small class="text-muted" id="targetHint">（點選股票加入目前欄位）</small>
+          <button class="btn btn-sm btn-outline-secondary float-end" onclick="refreshStocks()">🔄 重整頁面</button>
         </h6>
         <div class="small text-muted mb-1">高亮股票每 30 秒即時更新；未高亮顯示日收盤價。因 PythonAnywhere 免費版 CPU 配額限制，不全部即時輪詢。</div>
         <div class="btn-group btn-group-sm mb-2">
@@ -88,6 +88,8 @@
 </div>
 
 <script>
+const STOCK_NAMES = {{ stock_dict | tojson }};
+const PRICES = {{ prices | tojson }};
 const FIELD_NAMES = { removed: '剔除', added: '納入', reweight: '調降' };
 let activeField = 'removed';
 
@@ -114,18 +116,34 @@ function clearForm() {
   updateHighlights();
 }
 
+function ensureStockRows() {
+  const tbody = document.querySelector('table tbody');
+  if (!tbody) return;
+  const existing = new Set();
+  tbody.querySelectorAll('tr[data-code]').forEach(r => existing.add(r.dataset.code));
+  const needed = new Set();
+  document.querySelectorAll('input[name="removed"], input[name="added"], input[name="reweight"]').forEach(inp => {
+    inp.value.split(',').map(s => s.trim()).filter(Boolean).forEach(c => needed.add(c));
+  });
+  needed.forEach(code => {
+    if (existing.has(code)) return;
+    const tr = document.createElement('tr');
+    tr.dataset.code = code;
+    tr.style.cursor = 'pointer';
+    tr.onclick = function(){ addToActive(code); };
+    const name = STOCK_NAMES[code] || code;
+    const p = PRICES[code] || {};
+    const price = p.price != null ? (Number.isInteger(p.price) ? p.price : p.price.toFixed(2)) : '-';
+    const chg = p.change_pct != null ? (p.change_pct >= 0 ? '+' : '') + p.change_pct.toFixed(2) + '%' : '-';
+    const cls = p.change_pct > 0 ? 'text-danger' : p.change_pct < 0 ? 'text-success' : '';
+    tr.innerHTML = '<td class="text-muted">' + code + '</td><td>' + name + '</td><td class="text-end">' + price + '</td><td class="text-end ' + cls + '">' + chg + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
 function refreshStocks() {
-  fetch('/api/refresh_stocks', { method: 'POST' })
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'ok') {
-        alert(`✅ 已更新 ${data.count} 檔上市股票`);
-        location.reload();
-      } else {
-        alert('❌ ' + data.error);
-      }
-    })
-    .catch(() => alert('❌ 連線失敗'));
+  fetch('/api/refresh_stocks', { method: 'POST' }).catch(() => {});
+  location.reload();
 }
 
 function updateHighlights() {
@@ -141,16 +159,13 @@ function updateHighlights() {
     else if (reweight.includes(code)) row.classList.add('table-warning');
   });
 
+  function badgeNames(codes) {
+    return codes.map(c => { const r = document.querySelector(`tr[data-code="${c}"]`); return c + ' ' + (r?.cells?.[1]?.textContent || STOCK_NAMES[c] || ''); }).join(', ');
+  }
   const badgeAdded = document.querySelector('.badge.bg-danger')?.parentElement;
   const badgeRemoved = document.querySelector('.badge.bg-success')?.parentElement;
-  if (badgeAdded) {
-    const names = added.map(c => { const r = document.querySelector(`tr[data-code="${c}"]`); return c + ' ' + (r?.cells?.[1]?.textContent || ''); }).join(', ');
-    badgeAdded.innerHTML = '<span class="badge bg-danger">納入</span> ' + (names || '無');
-  }
-  if (badgeRemoved) {
-    const names = removed.map(c => { const r = document.querySelector(`tr[data-code="${c}"]`); return c + ' ' + (r?.cells?.[1]?.textContent || ''); }).join(', ');
-    badgeRemoved.innerHTML = '<span class="badge bg-success">剔除</span> ' + (names || '無');
-  }
+  if (badgeAdded) badgeAdded.innerHTML = '<span class="badge bg-danger">納入</span> ' + (added.length ? badgeNames(added) : '無');
+  if (badgeRemoved) badgeRemoved.innerHTML = '<span class="badge bg-success">剔除</span> ' + (removed.length ? badgeNames(removed) : '無');
 }
 
 function autoCompare() {
@@ -171,6 +186,7 @@ function autoCompare() {
       document.querySelector('input[name="quarter"]').value = data.data_quarter;
       document.querySelector('input[name="removed"]').value = (data.removed || []).join(',');
       document.querySelector('input[name="added"]').value = (data.added || []).join(',');
+      ensureStockRows();
       updateHighlights();
       if (data.note) {
         status.innerHTML = `⚠️ ${data.note}`;

@@ -21,7 +21,7 @@ from tw50_rebalance_arb.schedule import quarterly_dates, next_effective_date, is
 from tw50_rebalance_arb.signal import evaluate
 from tw50_rebalance_arb.journal import TradeJournal
 from tw50_rebalance_arb.config import STRATEGY, COST
-from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50
+from tw50_rebalance_arb.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50, fetch_tw50_holdings
 from tw50_rebalance_arb.adjustment import AdjustmentList
 from tw50_rebalance_arb.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch
 
@@ -91,9 +91,18 @@ def adjust():
         adj.set(quarter=quarter, removed=removed, added=added, reweight=reweight)
         flash("已儲存調整名單", "success")
         return redirect(url_for("adjust"))
+    tw50, _ = fetch_tw50_holdings()
+    if tw50:
+        extra = set(adj.data.get("removed", []) + adj.data.get("added", []) + adj.data.get("reweight", [])) - set(tw50.keys())
+        all_stocks = get_all_stocks()
+        for code in extra:
+            tw50[code] = all_stocks.get(code, code)
+        stock_items = sorted(tw50.items())
+    else:
+        stock_items = sorted(get_all_stocks().items())
     priority = adj.data.get("removed", []) + adj.data.get("added", []) + adj.data.get("reweight", [])
     prices = fetch_all_prices(priority_codes=priority or None)
-    return render_template("adjust.html", adj=adj, stocks=sorted(get_all_stocks().items()), stock_dict=get_all_stocks(), prices=prices)
+    return render_template("adjust.html", adj=adj, stocks=stock_items, stock_dict=get_all_stocks(), prices=prices)
 
 
 @app.route("/check", methods=["GET", "POST"])
