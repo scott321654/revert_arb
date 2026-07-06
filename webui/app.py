@@ -63,22 +63,22 @@ def _log(msg):
 
 @app.route("/")
 def index():
-    today = today()
-    nxt = next_effective_date(today)
+    _today = today()
+    nxt = next_effective_date(_today)
     journal = TradeJournal()
     open_trades = [t for t in journal.trades if t["status"] == "open"]
-    return render_template("index.html", today=today, nxt=nxt, open_count=len(open_trades), COST=COST, STRATEGY=STRATEGY,
+    return render_template("index.html", today=_today, nxt=nxt, open_count=len(open_trades), COST=COST, STRATEGY=STRATEGY,
                            market_open=is_market_open_today())
 
 
 @app.route("/schedule")
 def schedule():
-    today = today()
-    nxt = next_effective_date(today)
+    _today = today()
+    nxt = next_effective_date(_today)
     quarters = []
-    for y in range(today.year, today.year + 2):
+    for y in range(_today.year, _today.year + 2):
         quarters.extend(quarterly_dates(y))
-    return render_template("schedule.html", today=today, quarters=quarters, nxt=nxt)
+    return render_template("schedule.html", today=_today, quarters=quarters, nxt=nxt)
 
 
 @app.route("/adjust", methods=["GET", "POST"])

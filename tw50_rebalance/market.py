@@ -135,11 +135,11 @@ def fetch_all_prices(priority_codes: list = None) -> dict:
 
 
 def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
-    today = today()
+    _today = today()
     ranges = []
 
     for i in range(30):
-        d = today - timedelta(days=i)
+        d = _today - timedelta(days=i)
         if d.weekday() >= 5:
             continue
         url = TWSE_DAILY.format(d.strftime("%Y%m%d"), stock_id)

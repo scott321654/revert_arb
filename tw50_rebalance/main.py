@@ -27,22 +27,22 @@ from .market import current_price, recent_daily_volatility
 
 
 def cmd_schedule():
-    today = today()
-    print(f"今日日期: {today}")
+    _today = today()
+    print(f"今日日期: {_today}")
     print(f"交易成本: {COST}% (雙邊)")
     print(f"策略方向: 只做多超跌股")
     print(f"進場門檻: {STRATEGY['zscore_threshold']}σ")
     print()
 
-    for y in range(today.year, today.year + 2):
+    for y in range(_today.year, _today.year + 2):
         for q in quarterly_dates(y):
-            label = "🟢 下次" if q["effective_date"] >= today else "  "
+            label = "🟢 下次" if q["effective_date"] >= _today else "  "
             status = ""
-            if q["effective_date"] == today:
+            if q["effective_date"] == _today:
                 status = " ← 今天!"
-            elif q["effective_date"] < today:
+            elif q["effective_date"] < _today:
                 status = " (已過期)"
-            elif q == next_effective_date(today):
+            elif q == next_effective_date(_today):
                 status = " ← 下一次"
 
             print(f"{label} {q['quarter']:>8}  "
@@ -75,7 +75,7 @@ def cmd_adjust():
 
 
 def cmd_check():
-    today = today()
+    _today = today()
 
     if len(sys.argv) < 4:
         print("用法: python3 run.py check <股票代號> <尾盤跌幅%> <日內波動率%>")
