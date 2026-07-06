@@ -24,7 +24,7 @@ from tw50_rebalance.journal import TradeJournal
 from tw50_rebalance.config import STRATEGY, COST
 from tw50_rebalance.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50, fetch_tw50_holdings
 from tw50_rebalance.adjustment import AdjustmentList
-from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch
+from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch, yahoo_5m_close
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -307,17 +307,32 @@ def api_monitor_start():
                 return
 
             monitor_state["phase"] = "capturing_ref"
-            _log("捕捉 13:25 基準價...")
+            past_1325 = now() >= start_dt
+            if past_1325:
+                _log("已過 13:25，改用 Yahoo 5 分線回溯基準價...")
+            else:
+                _log("捕捉 13:25 基準價...")
             for sid in monitor_state["targets"]:
-                q = current_price(sid)
-                p = q.get("price") if q else None
+                if past_1325:
+                    p = yahoo_5m_close(sid)
+                    name = lookup_name(sid) or sid
+                    prev = None
+                    q = current_price(sid)
+                    if q:
+                        prev = q.get("prev_close")
+                        name = q.get("name") or name
+                else:
+                    q = current_price(sid)
+                    p = q.get("price") if q else None
+                    name = q.get("name") or lookup_name(sid) if q else lookup_name(sid)
+                    prev = q.get("prev_close") if q else None
                 if p is not None:
                     monitor_state["refs"][sid] = {
                         "price": p,
-                        "name": q.get("name") or lookup_name(sid),
-                        "prev_close": q.get("prev_close"),
+                        "name": name,
+                        "prev_close": prev,
                     }
-                    _log(f"  {sid} ({monitor_state['refs'][sid]['name']}): 基準價 {p}")
+                    _log(f"  {sid} ({name}): 基準價 {p}")
                 time.sleep(0.5)
 
             missing = [s for s in monitor_state["targets"] if s not in monitor_state["refs"]]

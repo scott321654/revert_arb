@@ -72,6 +72,29 @@ def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:
 TWSE_DAY_ALL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 
 
+def yahoo_5m_close(stock_id: str, target_hour: int = 13, target_minute: int = 20) -> Optional[float]:
+    from datetime import timezone, timedelta
+    tz8 = timezone(timedelta(hours=8))
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=1d"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+        result = data["chart"]["result"][0]
+        ts = result["timestamp"]
+        closes = result["indicators"]["quote"][0]["close"]
+        best = None
+        for i, t in enumerate(ts):
+            dt = datetime.fromtimestamp(t, tz=tz8)
+            if dt.hour > target_hour or (dt.hour == target_hour and dt.minute > target_minute):
+                break
+            if closes[i] is not None:
+                best = closes[i]
+        return round(best, 2) if best else None
+    except Exception:
+        return None
+
+
 def _parse_day_all(data: list) -> dict:
     result = {}
     for item in data:
