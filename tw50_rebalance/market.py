@@ -106,7 +106,7 @@ def _fetch_realtime_batch(codes: list) -> dict:
         z = m.get("z", "-")
         y = m.get("y", "-")
         try:
-            price = float(z) if z != "-" else _mid_price(m) or (float(m["o"]) if m.get("o") and m["o"] != "-" else None)
+            price = float(z) if z != "-" else None
             prev = float(y) if y != "-" else None
             if price and prev:
                 chg = price - prev
