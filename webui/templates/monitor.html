@@ -51,6 +51,9 @@
 <div class="card">
   <div class="card-body">
     <h6>📋 執行日誌</h6>
+    <div id="waitInfo" class="text-center mb-2" style="display:none; font-size: 1.5rem; font-weight: 700; font-family: monospace; color: #2c3e50">
+      <span id="waitLabel"></span> <span id="waitCountdown"></span>
+    </div>
     <div class="monitor-log" id="monitorLog">尚未開始監控</div>
   </div>
 </div>
@@ -121,8 +124,23 @@ function pollStatus() {
         logEl.textContent = data.log.join('\n');
         logEl.scrollTop = logEl.scrollHeight;
       }
+      const waitEl = document.getElementById('waitInfo');
+      if (data.wait_total > 0 && data.wait_remaining > 0) {
+        waitEl.style.display = 'block';
+        const h = Math.floor(data.wait_remaining / 3600);
+        const m = Math.floor((data.wait_remaining % 3600) / 60);
+        const s = data.wait_remaining % 60;
+        document.getElementById('waitCountdown').textContent =
+          h > 0 ? h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+                : m + ':' + String(s).padStart(2, '0');
+        document.getElementById('waitLabel').textContent =
+          data.phase === 'waiting' ? '⏳ 等待 13:25 基準價' : '⏳ 等待 13:30 收盤價';
+      } else {
+        waitEl.style.display = 'none';
+      }
       if (data.phase === 'done' || data.phase === 'cancelled' || (!data.running && data.log.length > 0)) {
         clearInterval(pollInterval);
+        waitEl.style.display = 'none';
         document.getElementById('btnStart').disabled = false;
         document.getElementById('btnStart').textContent = '▶ 開始監控';
         document.getElementById('btnStop').classList.add('d-none');
