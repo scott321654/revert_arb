@@ -280,10 +280,17 @@ def api_monitor_start():
                 wait_sec = (start_dt - _now).total_seconds()
                 _log(f"等待 13:25 (約 {int(wait_sec)} 秒)...")
                 monitor_state["phase"] = "waiting"
+                last_log = 0
                 while now() < start_dt:
                     if monitor_state["cancel"]:
                         _log("已取消")
                         return
+                    remaining = int((start_dt - now()).total_seconds())
+                    if remaining <= 0:
+                        break
+                    if remaining != last_log:
+                        last_log = remaining
+                        _log(f"⏳ 剩餘 {remaining} 秒...")
                     time.sleep(1)
 
             if monitor_state["cancel"]:
@@ -314,10 +321,17 @@ def api_monitor_start():
                 wait_sec = (end_dt - _now).total_seconds()
                 _log(f"等待 13:30 收盤價 (約 {int(wait_sec)} 秒)...")
                 monitor_state["phase"] = "waiting_final"
+                last_log = 0
                 while now() < end_dt:
                     if monitor_state["cancel"]:
                         _log("已取消")
                         return
+                    remaining = int((end_dt - now()).total_seconds())
+                    if remaining <= 0:
+                        break
+                    if remaining != last_log:
+                        last_log = remaining
+                        _log(f"⏳ 剩餘 {remaining} 秒...")
                     time.sleep(1)
 
             monitor_state["phase"] = "capturing_final"
