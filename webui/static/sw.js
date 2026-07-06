@@ -55,6 +55,9 @@ self.addEventListener("fetch", (e) => {
           return resp;
         })
         .catch(() => cached);
+      if (e.request.mode === "navigate") {
+        return fetched;
+      }
       return cached || fetched;
     })
   );
