@@ -282,9 +282,14 @@ def api_monitor_start():
 
     def _run():
         try:
-            start_dt = tz_strptime(f"{today()} 13:25", "%Y-%m-%d %H:%M")
-            end_dt = tz_strptime(f"{today()} 13:30", "%Y-%m-%d %H:%M")
             _now = now()
+            if _now.hour < 8:
+                ref_date = today() - timedelta(days=1)
+                _log(f"凌晨時段，以 {ref_date} 為交易日進行盤後監控...")
+            else:
+                ref_date = today()
+            start_dt = tz_strptime(f"{ref_date} 13:25", "%Y-%m-%d %H:%M")
+            end_dt = tz_strptime(f"{ref_date} 13:30", "%Y-%m-%d %H:%M")
 
             if _now < start_dt:
                 wait_sec = int((start_dt - _now).total_seconds())
@@ -314,7 +319,7 @@ def api_monitor_start():
                 _log("捕捉 13:25 基準價...")
             for sid in monitor_state["targets"]:
                 if past_1325:
-                    p = yahoo_5m_price(sid)
+                    p = yahoo_5m_price(sid, target_date=ref_date.strftime("%Y-%m-%d"))
                     name = lookup_name(sid) or sid
                     prev = None
                     q = current_price(sid)
@@ -370,7 +375,7 @@ def api_monitor_start():
                 if sid not in monitor_state["refs"]:
                     continue
                 if past_1330:
-                    final_p = yahoo_close_price(sid)
+                    final_p = yahoo_close_price(sid, target_date=ref_date.strftime("%Y-%m-%d"))
                     if final_p is None:
                         q = current_price(sid)
                         final_p = q.get("price") if q else None

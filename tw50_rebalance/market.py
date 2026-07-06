@@ -72,11 +72,11 @@ def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:
 TWSE_DAY_ALL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 
 
-def yahoo_5m_price(stock_id: str, target_hour: int = 13, target_minute: int = 20) -> Optional[float]:
-    """Get the close of the 5m kline at target time, or the last non-None close at or before it."""
+def yahoo_5m_price(stock_id: str, target_hour: int = 13, target_minute: int = 20, target_date: str = None) -> Optional[float]:
+    """Get the close of the 5m kline at target time on target_date, or the last non-None close at or before it."""
     from datetime import timezone, timedelta
     tz8 = timezone(timedelta(hours=8))
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=2d"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         resp = urllib.request.urlopen(req, timeout=10)
@@ -87,6 +87,8 @@ def yahoo_5m_price(stock_id: str, target_hour: int = 13, target_minute: int = 20
         best = None
         for i, t in enumerate(ts):
             dt = datetime.fromtimestamp(t, tz=tz8)
+            if target_date and dt.strftime("%Y-%m-%d") != target_date:
+                continue
             if dt.hour > target_hour or (dt.hour == target_hour and dt.minute > target_minute):
                 break
             if closes[i] is not None:
@@ -96,11 +98,12 @@ def yahoo_5m_price(stock_id: str, target_hour: int = 13, target_minute: int = 20
         return None
 
 
-def yahoo_close_price(stock_id: str) -> Optional[float]:
-    """Get the 13:30 closing auction price from Yahoo 5m kline (13:30 bar close)."""
+def yahoo_close_price(stock_id: str, target_date: str = None) -> Optional[float]:
+    """Get the 13:30 closing auction price from Yahoo 5m kline (13:30 bar close).
+    Falls back to the last non-None close on target_date if 13:30 bar is missing."""
     from datetime import timezone, timedelta
     tz8 = timezone(timedelta(hours=8))
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=2d"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         resp = urllib.request.urlopen(req, timeout=10)
@@ -108,11 +111,16 @@ def yahoo_close_price(stock_id: str) -> Optional[float]:
         result = data["chart"]["result"][0]
         ts = result["timestamp"]
         closes = result["indicators"]["quote"][0]["close"]
+        last_close = None
         for i, t in enumerate(ts):
             dt = datetime.fromtimestamp(t, tz=tz8)
+            if target_date and dt.strftime("%Y-%m-%d") != target_date:
+                continue
+            if closes[i] is not None:
+                last_close = closes[i]
             if dt.hour == 13 and dt.minute == 30 and closes[i] is not None:
                 return round(closes[i], 2)
-        return None
+        return round(last_close, 2) if last_close else None
     except Exception:
         return None
 
