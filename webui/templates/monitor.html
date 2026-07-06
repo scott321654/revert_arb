@@ -135,9 +135,12 @@ function pollStatus() {
         progEl.style.display = '';
         const pct = Math.round((1 - data.wait_remaining / data.wait_total) * 100);
         document.getElementById('waitBar').style.width = pct + '%';
-        const m = Math.floor(data.wait_remaining / 60);
+        const h = Math.floor(data.wait_remaining / 3600);
+        const m = Math.floor((data.wait_remaining % 3600) / 60);
         const s = data.wait_remaining % 60;
-        document.getElementById('waitCountdown').textContent = m + ':' + String(s).padStart(2, '0');
+        document.getElementById('waitCountdown').textContent =
+          h > 0 ? h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+                : m + ':' + String(s).padStart(2, '0');
         document.getElementById('waitLabel').textContent =
           data.phase === 'waiting' ? '等待 13:25 基準價' : '等待 13:30 收盤價';
       } else {
