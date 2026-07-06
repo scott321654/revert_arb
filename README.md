@@ -39,7 +39,7 @@ python3 run_webui.py
 | Dashboard | 今日日期、成本、門檻、下次生效日 |
 | Schedule | 季度審核/生效日期表 |
 | Adjust | 編輯調整名單，自動比對 0050 持股差異 |
-| Monitor | 尾盤 13:25-13:30 即時監控 |
+| Monitor | 尾盤 13:25-13:30 即時/盤後監控 |
 | Check | 手動訊號評估 |
 | Positions | 持倉列表 |
 | Exit | 平倉 |
@@ -126,14 +126,16 @@ python3 run.py positions
 - **0050 持倉（主要）**：`etfinfo.tw` → 解析 `__NUXT_DATA__`，即時含權重
 - **0050 持倉（備援）**：GitHub `tbdavid2019/stock-index-api` → `fund_0050.json`
 - **上一季比對**：本地快照 `tw50_snapshots.json`，或 GitHub commit history
-- **股價**：TWSE `STOCK_DAY_ALL`（全市場收盤價） + `getStockInfo.jsp`（即時報價）
+- **股價（即時）**：TWSE `getStockInfo.jsp`（盤中即時報價，`z` 為最後成交價，`z="-"` 時 fallback 至 best bid/ask mid-price）
+- **股價（盤後 fallback）**：Yahoo Finance API `query1.finance.yahoo.com/v8/finance/chart`（5 分鐘 K 線，13:20 close = 基準價，13:30 close = 收盤價）
+- **全市場收盤價**：TWSE `STOCK_DAY_ALL`
 - **股票名稱**：TWSE `BWIBBU_ALL`，快取於 `stock_names.json`
 
 ## 策略篩選條件
 
 | 條件 | 說明 |
 |------|------|
-| Z-score ≥ 2.5σ | 尾盤跌幅需超過個股日內波動率的 2.5 倍標準差 |
+| Z-score ≥ 2.5σ | 尾盤跌幅需超過個股近 20 日日內振幅的 2.5 倍樣本標準差 |
 | 方向 = Long | 僅接受超跌買進（負偏差） |
 | 非處置股/注意股 | 處置股分盤撮合破壞套利流動性 |
 | 融券比率 < 25% | 避免空單過度擁擠 |
@@ -142,11 +144,20 @@ python3 run.py positions
 
 | 項目 | 費率 |
 |------|------|
-| 手續費（券商 6 折後） | 0.057% |
+| 手續費（券商 6.5 折後） | 0.054% |
 | 證券交易稅（賣出） | 0.300% |
-| **雙邊合計** | **~0.357%** |
+| **雙邊合計** | **~0.414%** |
 
 > 若無券商折讓，成本將升至 0.585%，會嚴重侵蝕利潤。請確保你有手續費折讓。
+
+## 監控模式
+
+| 啟動時間 | 交易日 | 基準價來源 | 收盤價來源 |
+|----------|--------|-----------|----------|
+| 08:00~13:25 | 當天 | TWSE 即時 API（13:25 抓） | TWSE 即時 API（13:30+30s 抓） |
+| 13:25~13:30 | 當天 | Yahoo 5m K線（13:20 close） | TWSE 即時 API（13:30+30s 抓） |
+| 13:30~23:59 | 當天 | Yahoo 5m K線（13:20 close） | Yahoo 5m K線（13:30 close） |
+| 00:00~07:59 | 前一天 | Yahoo 5m K線（前一天 13:20 close） | Yahoo 5m K線（前一天 13:30 close） |
 
 ## 測試
 
