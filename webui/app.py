@@ -280,7 +280,7 @@ def api_monitor_start():
 
             if _now < start_dt:
                 wait_sec = int((start_dt - _now).total_seconds())
-                _log(f"等待 13:25 (約 {wait_sec} 秒)...")
+                _log("等待 13:25 基準價...")
                 monitor_state["phase"] = "waiting"
                 monitor_state["wait_total"] = wait_sec
                 while now() < start_dt:
@@ -320,7 +320,7 @@ def api_monitor_start():
             _now = now()
             if _now < end_dt:
                 wait_sec = int((end_dt - _now).total_seconds())
-                _log(f"等待 13:30 收盤價 (約 {wait_sec} 秒)...")
+                _log("等待 13:30 收盤價...")
                 monitor_state["phase"] = "waiting_final"
                 monitor_state["wait_total"] = wait_sec
                 while now() < end_dt:

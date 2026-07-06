@@ -51,13 +51,11 @@
 <div class="card">
   <div class="card-body">
     <h6>📋 執行日誌</h6>
-    <div id="waitProgress" class="mb-2" style="display:none">
-      <div class="d-flex justify-content-between small text-muted mb-1">
-        <span id="waitLabel">等待中...</span>
-        <span id="waitCountdown"></span>
-      </div>
-      <div class="progress" style="height: 8px">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" id="waitBar" style="width: 0%"></div>
+    <div id="waitProgress" class="text-center py-3 mb-3" style="display:none; background: #f8f9fa; border-radius: 8px">
+      <div id="waitLabel" class="text-muted mb-2">等待中...</div>
+      <div id="waitCountdown" style="font-size: 2.5rem; font-weight: 700; font-family: monospace; color: #2c3e50"></div>
+      <div class="progress mt-2" style="height: 12px">
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="waitBar" style="width: 0%"></div>
       </div>
     </div>
     <div class="monitor-log" id="monitorLog">尚未開始監控</div>
