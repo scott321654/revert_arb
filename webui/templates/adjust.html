@@ -189,6 +189,7 @@ function autoCompare() {
       document.querySelector('input[name="added"]').value = (data.added || []).join(',');
       ensureStockRows();
       updateHighlights();
+      refreshPrices();
       if (data.note) {
         status.innerHTML = `⚠️ ${data.note}`;
       } else {
