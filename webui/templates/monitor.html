@@ -115,6 +115,19 @@ function stopMonitor() {
   document.getElementById('btnStop').textContent = '停止中...';
 }
 
+let countdownVal = 0;
+let countdownTimer = null;
+
+function updateCountdownDisplay() {
+  if (countdownVal <= 0) { return; }
+  const h = Math.floor(countdownVal / 3600);
+  const m = Math.floor((countdownVal % 3600) / 60);
+  const s = countdownVal % 60;
+  document.getElementById('waitCountdown').textContent =
+    h > 0 ? h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+          : m + ':' + String(s).padStart(2, '0');
+}
+
 function pollStatus() {
   fetch('/api/monitor/status')
     .then(r => r.json())
@@ -127,19 +140,22 @@ function pollStatus() {
       const waitEl = document.getElementById('waitInfo');
       if (data.wait_total > 0 && data.wait_remaining > 0) {
         waitEl.style.display = 'block';
-        const h = Math.floor(data.wait_remaining / 3600);
-        const m = Math.floor((data.wait_remaining % 3600) / 60);
-        const s = data.wait_remaining % 60;
-        document.getElementById('waitCountdown').textContent =
-          h > 0 ? h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
-                : m + ':' + String(s).padStart(2, '0');
+        countdownVal = data.wait_remaining;
+        updateCountdownDisplay();
         document.getElementById('waitLabel').textContent =
           data.phase === 'waiting' ? '⏳ 等待 13:25 基準價' : '⏳ 等待 13:30 收盤價';
+        if (!countdownTimer) {
+          countdownTimer = setInterval(() => {
+            if (countdownVal > 0) { countdownVal--; updateCountdownDisplay(); }
+          }, 1000);
+        }
       } else {
         waitEl.style.display = 'none';
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       }
       if (data.phase === 'done' || data.phase === 'cancelled' || (!data.running && data.log.length > 0)) {
         clearInterval(pollInterval);
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
         waitEl.style.display = 'none';
         document.getElementById('btnStart').disabled = false;
         document.getElementById('btnStart').textContent = '▶ 開始監控';
