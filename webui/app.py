@@ -362,7 +362,7 @@ def api_monitor_start():
                 ref = monitor_state["refs"][sid]
                 final_p = monitor_state["finals"][sid]
                 deviation = round((final_p - ref["price"]) / ref["price"] * 100, 2)
-                hist_vol = recent_daily_volatility(sid, 5) or 0
+                hist_vol = recent_daily_volatility(sid) or 0
                 adj_obj = AdjustmentList()
                 event = adj_obj.get_event(sid) or "被剔除"
                 sig = evaluate(

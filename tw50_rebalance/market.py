@@ -1,5 +1,6 @@
 import urllib.request
 import json
+import statistics
 from datetime import date, datetime, timedelta
 from .tzutil import now, today
 from typing import Optional
@@ -134,7 +135,7 @@ def fetch_all_prices(priority_codes: list = None) -> dict:
     return result
 
 
-def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
+def recent_daily_volatility(stock_id: str, days: int = 20) -> Optional[float]:
     d = today()
     ranges = []
 
@@ -147,9 +148,8 @@ def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
                 try:
                     high = float(row[4].replace(",", ""))
                     low = float(row[5].replace(",", ""))
-                    close = float(row[6].replace(",", ""))
-                    month_ranges.append((high - low) / close * 100)
-                except (ValueError, IndexError):
+                    month_ranges.append((high - low) / low * 100)
+                except (ValueError, IndexError, ZeroDivisionError):
                     continue
         ranges = month_ranges + ranges
         if len(ranges) >= days:
@@ -159,6 +159,4 @@ def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
     ranges = ranges[-days:]
     if len(ranges) < 2:
         return None
-    mean = sum(ranges) / len(ranges)
-    var = sum((x - mean) ** 2 for x in ranges) / len(ranges)
-    return round(var ** 0.5, 2)
+    return round(statistics.stdev(ranges), 2)

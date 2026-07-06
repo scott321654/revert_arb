@@ -195,7 +195,7 @@ def _monitor_single(stock_id: str, has_ref: bool, ref_price=None, ref_name="", p
     if event == "被納入":
         return None
 
-    hist_vol = recent_daily_volatility(stock_id, 5) or 0
+    hist_vol = recent_daily_volatility(stock_id) or 0
     sig = evaluate(
         stock_id=stock_id,
         stock_name=stock_name,
@@ -511,8 +511,8 @@ def cmd_monitor():
         return
 
     print()
-    print("📡 正在計算近5日日內波動率...")
-    hist_vol = recent_daily_volatility(stock_id, 5)
+    print("📡 正在計算近20日日內振幅波動率...")
+    hist_vol = recent_daily_volatility(stock_id)
     if hist_vol:
         print(f"   波動率: {hist_vol}%")
     else:

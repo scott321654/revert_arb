@@ -18,7 +18,7 @@ COST = None
 
 def calc_cost():
     global COST
-    c = TRADE["commission"] * TRADE["broker_discount"]
+    c = TRADE["commission"] * (1 - TRADE["broker_discount"])
     t = TRADE["stamp_tax"]
     COST = round((2 * c + t) * 100, 3)
 
