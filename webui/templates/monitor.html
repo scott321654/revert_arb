@@ -176,6 +176,7 @@ function fetchSinglePrice() {
 }
 
 {% if monitor_state.running %}
+pollStatus();
 pollInterval = setInterval(pollStatus, 1000);
 {% endif %}
 </script>
