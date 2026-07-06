@@ -24,7 +24,7 @@ from tw50_rebalance.journal import TradeJournal
 from tw50_rebalance.config import STRATEGY, COST
 from tw50_rebalance.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50, fetch_tw50_holdings
 from tw50_rebalance.adjustment import AdjustmentList
-from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch, yahoo_5m_close
+from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch, yahoo_5m_price, yahoo_close_price
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -314,7 +314,7 @@ def api_monitor_start():
                 _log("捕捉 13:25 基準價...")
             for sid in monitor_state["targets"]:
                 if past_1325:
-                    p = yahoo_5m_close(sid)
+                    p = yahoo_5m_price(sid)
                     name = lookup_name(sid) or sid
                     prev = None
                     q = current_price(sid)
@@ -357,15 +357,26 @@ def api_monitor_start():
                 monitor_state["wait_remaining"] = 0
 
             monitor_state["phase"] = "capturing_final"
-            if now() < end_dt + timedelta(seconds=30):
+            past_1330 = now() >= end_dt
+            if past_1330:
+                _log("已過 13:30，改用 Yahoo 5 分線回溯收盤價...")
+            elif now() < end_dt + timedelta(seconds=30):
                 _log("等待收盤搓合結果 (30秒)...")
                 time.sleep(30)
-            _log("捕捉 13:30 收盤價...")
+                _log("捕捉 13:30 收盤價...")
+            else:
+                _log("捕捉 13:30 收盤價...")
             for sid in monitor_state["targets"]:
                 if sid not in monitor_state["refs"]:
                     continue
-                q = current_price(sid)
-                final_p = q.get("price") if q else None
+                if past_1330:
+                    final_p = yahoo_close_price(sid)
+                    if final_p is None:
+                        q = current_price(sid)
+                        final_p = q.get("price") if q else None
+                else:
+                    q = current_price(sid)
+                    final_p = q.get("price") if q else None
                 if final_p is not None:
                     monitor_state["finals"][sid] = final_p
                 _log(f"  {sid}: 收盤價 {monitor_state['finals'].get(sid, '−')}")

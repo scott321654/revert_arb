@@ -72,7 +72,8 @@ def current_price(stock_id: str, exchange: str = "tse") -> Optional[dict]:
 TWSE_DAY_ALL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 
 
-def yahoo_5m_close(stock_id: str, target_hour: int = 13, target_minute: int = 20) -> Optional[float]:
+def yahoo_5m_price(stock_id: str, target_hour: int = 13, target_minute: int = 20) -> Optional[float]:
+    """Get the close of the 5m kline at target time, or the last non-None close at or before it."""
     from datetime import timezone, timedelta
     tz8 = timezone(timedelta(hours=8))
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=1d"
@@ -91,6 +92,27 @@ def yahoo_5m_close(stock_id: str, target_hour: int = 13, target_minute: int = 20
             if closes[i] is not None:
                 best = closes[i]
         return round(best, 2) if best else None
+    except Exception:
+        return None
+
+
+def yahoo_close_price(stock_id: str) -> Optional[float]:
+    """Get the 13:30 closing auction price from Yahoo 5m kline (13:30 bar close)."""
+    from datetime import timezone, timedelta
+    tz8 = timezone(timedelta(hours=8))
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW?interval=5m&range=1d"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+        result = data["chart"]["result"][0]
+        ts = result["timestamp"]
+        closes = result["indicators"]["quote"][0]["close"]
+        for i, t in enumerate(ts):
+            dt = datetime.fromtimestamp(t, tz=tz8)
+            if dt.hour == 13 and dt.minute == 30 and closes[i] is not None:
+                return round(closes[i], 2)
+        return None
     except Exception:
         return None
 
