@@ -1,6 +1,7 @@
 import urllib.request
 import json
 from datetime import date, datetime, timedelta
+from .tzutil import now, today
 from typing import Optional
 
 
@@ -34,10 +35,10 @@ def is_market_open_today() -> bool:
     q = current_price("2330")
     if not q:
         return False
-    now_hour = datetime.now().hour
+    now_hour = now().hour
     if q.get("volume", 0) > 0 and q.get("price"):
         return True
-    if 9 <= now_hour <= 13 or (now_hour == 13 and datetime.now().minute <= 35):
+    if 9 <= now_hour <= 13 or (now_hour == 13 and now().minute <= 35):
         return True
     return False
 
@@ -134,7 +135,7 @@ def fetch_all_prices(priority_codes: list = None) -> dict:
 
 
 def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
-    today = date.today()
+    today = today()
     ranges = []
 
     for i in range(30):

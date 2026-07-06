@@ -15,6 +15,7 @@ import sys
 import time
 from typing import Optional
 from datetime import date, datetime, timedelta
+from .tzutil import now, today
 
 from .schedule import quarterly_dates, next_effective_date, is_effective_today
 from .signal import evaluate
@@ -26,7 +27,7 @@ from .market import current_price, recent_daily_volatility
 
 
 def cmd_schedule():
-    today = date.today()
+    today = today()
     print(f"今日日期: {today}")
     print(f"交易成本: {COST}% (雙邊)")
     print(f"策略方向: 只做多超跌股")
@@ -74,7 +75,7 @@ def cmd_adjust():
 
 
 def cmd_check():
-    today = date.today()
+    today = today()
 
     if len(sys.argv) < 4:
         print("用法: python3 run.py check <股票代號> <尾盤跌幅%> <日內波動率%>")
@@ -236,16 +237,16 @@ def cmd_monitor_all():
     print()
 
     entry_start, entry_end = STRATEGY["entry_window"]
-    now = datetime.now()
-    today_str = now.strftime("%Y-%m-%d")
+    _now = now()
+    today_str = _now.strftime("%Y-%m-%d")
     start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
     end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
     poll_start = start_dt.replace(second=0) - timedelta(seconds=5)
 
-    if now < poll_start:
+    if _now < poll_start:
         last_bar = ""
-        while datetime.now() < poll_start:
-            remaining = int((poll_start - datetime.now()).total_seconds())
+        while now() < poll_start:
+            remaining = int((poll_start - now()).total_seconds())
             h, r = divmod(remaining, 3600)
             m, s = divmod(r, 60)
             bar = f"\r⏳ 等待尾盤窗口  {h:02d}:{m:02d}:{s:02d}"
@@ -255,11 +256,11 @@ def cmd_monitor_all():
             time.sleep(1)
         print()
 
-    has_ref = datetime.now() < start_dt.replace(second=0)
+    has_ref = now() < start_dt.replace(second=0)
     if has_ref:
         print(f"📡 批次捕捉 {len(targets)} 檔 13:25 前最後成交價...")
         deadline_13_25 = start_dt.replace(second=0)
-        while datetime.now() < deadline_13_25:
+        while now() < deadline_13_25:
             for sid in targets:
                 if sid not in refs:
                     q = current_price(sid)
@@ -281,7 +282,7 @@ def cmd_monitor_all():
             print(f"⚠️  以下股票未取得基準價: {', '.join(missing)}")
             targets = [s for s in targets if s in refs]
 
-        remaining = (end_dt - datetime.now()).total_seconds()
+        remaining = (end_dt - now()).total_seconds()
         if remaining > 0:
             print(f"⏳ 等待 13:30 收盤價，約再等 {remaining:.0f} 秒...")
             time.sleep(remaining)
@@ -383,16 +384,16 @@ def cmd_monitor():
         print()
 
     entry_start, entry_end = STRATEGY["entry_window"]
-    now = datetime.now()
-    today_str = now.strftime("%Y-%m-%d")
+    _now = now()
+    today_str = _now.strftime("%Y-%m-%d")
     start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
     end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
 
     poll_start = start_dt.replace(second=0) - timedelta(seconds=10)
-    if now < poll_start:
+    if _now < poll_start:
         last_bar = ""
-        while datetime.now() < poll_start:
-            remaining = int((poll_start - datetime.now()).total_seconds())
+        while now() < poll_start:
+            remaining = int((poll_start - now()).total_seconds())
             h, r = divmod(remaining, 3600)
             m, s = divmod(r, 60)
             bar = f"\r⏳ 等待尾盤窗口  {h:02d}:{m:02d}:{s:02d}"
@@ -402,13 +403,13 @@ def cmd_monitor():
             time.sleep(1)
         print()
 
-    has_ref = datetime.now() < start_dt.replace(second=0)
+    has_ref = now() < start_dt.replace(second=0)
     if has_ref:
         print(f"📡 持續捕捉 {stock_id} 13:25 前最後一筆成交價...")
         ref_price = None
         last_print = ""
         deadline_13_25 = start_dt.replace(second=0)
-        while datetime.now() < deadline_13_25:
+        while now() < deadline_13_25:
             q = current_price(stock_id)
             z = q.get("z") if q else None
             p = float(z) if z and z != "-" else None
@@ -416,7 +417,7 @@ def cmd_monitor():
                 ref_price = p
                 stock_name = q["name"] or lookup_name(stock_id)
                 prev_close = q["prev_close"]
-            now_str = datetime.now().strftime("%H:%M:%S")
+            now_str = now().strftime("%H:%M:%S")
             msg = f"\r   {now_str}  最新價: {p or '−':>8}   基準價: {ref_price or '−'}"
             if msg != last_print:
                 print(msg, end="", flush=True)
@@ -428,7 +429,7 @@ def cmd_monitor():
             return
         print(f"\n✅ 13:25 基準價: {ref_price}")
 
-        remaining = (end_dt - datetime.now()).total_seconds()
+        remaining = (end_dt - now()).total_seconds()
         if remaining > 0:
             print(f"⏳ 等待 13:30 收盤價，約再等 {remaining:.0f} 秒...")
             time.sleep(remaining)

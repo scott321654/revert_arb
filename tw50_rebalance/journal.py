@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime
+from .tzutil import now, today
 from pathlib import Path
 from typing import Optional
 
@@ -27,8 +28,8 @@ class TradeJournal:
             "stock_id": signal.stock_id,
             "stock_name": signal.stock_name,
             "event": signal.event,
-            "entry_date": str(date.today()),
-            "entry_time": str(datetime.now().strftime("%H:%M")),
+            "entry_date": str(today()),
+            "entry_time": str(now().strftime("%H:%M")),
             "entry_price": entry_price,
             "shares": shares,
             "amount": round(entry_price * shares, 0),
@@ -48,8 +49,8 @@ class TradeJournal:
                 net_ret = round(gross_ret - COST, 3)
                 t.update({
                     "exit_price": exit_price,
-                    "exit_date": str(date.today()),
-                    "exit_time": str(datetime.now().strftime("%H:%M")),
+                    "exit_date": str(today()),
+                    "exit_time": str(now().strftime("%H:%M")),
                     "gross_return_pct": gross_ret,
                     "net_return_pct": net_ret,
                     "cost_pct": COST,

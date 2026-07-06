@@ -4,6 +4,7 @@ import os
 import re
 import urllib.request
 from datetime import date
+from .tzutil import today
 from typing import Optional
 
 TWSE_ALL_STOCKS = "https://openapi.twse.com.tw/v1/exchangeReport/BWIBBU_ALL"
@@ -77,7 +78,7 @@ def lookup_name(stock_id):
 
 def _quarter_label(d: date = None) -> str:
     if d is None:
-        d = date.today()
+        d = today()
     return f"{d.year}Q{math.ceil(d.month / 3)}"
 
 
@@ -90,7 +91,7 @@ def _prev_quarter_label(d: date = None, from_label: str = None) -> str:
                 return f"{y - 1}Q4"
             return f"{y}Q{qn - 1}"
     if d is None:
-        d = date.today()
+        d = today()
     q = math.ceil(d.month / 3)
     if q == 1:
         return f"{d.year - 1}Q4"

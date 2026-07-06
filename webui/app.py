@@ -13,6 +13,7 @@ import json
 import time
 import threading
 from datetime import date, datetime, timedelta
+from tw50_rebalance.tzutil import now, today
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
@@ -57,12 +58,12 @@ monitor_state = {
 
 
 def _log(msg):
-    monitor_state["log"].append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+    monitor_state["log"].append(f"[{now().strftime('%H:%M:%S')}] {msg}")
 
 
 @app.route("/")
 def index():
-    today = date.today()
+    today = today()
     nxt = next_effective_date(today)
     journal = TradeJournal()
     open_trades = [t for t in journal.trades if t["status"] == "open"]
@@ -72,7 +73,7 @@ def index():
 
 @app.route("/schedule")
 def schedule():
-    today = date.today()
+    today = today()
     nxt = next_effective_date(today)
     quarters = []
     for y in range(today.year, today.year + 2):
@@ -271,15 +272,15 @@ def api_monitor_start():
 
     def _run():
         try:
-            start_dt = datetime.strptime(f"{date.today()} 13:25", "%Y-%m-%d %H:%M")
-            end_dt = datetime.strptime(f"{date.today()} 13:30", "%Y-%m-%d %H:%M")
-            now = datetime.now()
+            start_dt = datetime.strptime(f"{today()} 13:25", "%Y-%m-%d %H:%M")
+            end_dt = datetime.strptime(f"{today()} 13:30", "%Y-%m-%d %H:%M")
+            _now = now()
 
-            if now < start_dt:
-                wait_sec = (start_dt - now).total_seconds()
+            if _now < start_dt:
+                wait_sec = (start_dt - _now).total_seconds()
                 _log(f"等待 13:25 (約 {int(wait_sec)} 秒)...")
                 monitor_state["phase"] = "waiting"
-                while datetime.now() < start_dt:
+                while now() < start_dt:
                     if monitor_state["cancel"]:
                         _log("已取消")
                         return
@@ -308,12 +309,12 @@ def api_monitor_start():
             if missing:
                 _log(f"⚠️ 以下股票未取得基準價: {', '.join(missing)}")
 
-            now = datetime.now()
-            if now < end_dt:
-                wait_sec = (end_dt - now).total_seconds()
+            _now = now()
+            if _now < end_dt:
+                wait_sec = (end_dt - _now).total_seconds()
                 _log(f"等待 13:30 收盤價 (約 {int(wait_sec)} 秒)...")
                 monitor_state["phase"] = "waiting_final"
-                while datetime.now() < end_dt:
+                while now() < end_dt:
                     if monitor_state["cancel"]:
                         _log("已取消")
                         return

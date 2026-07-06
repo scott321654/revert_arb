@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from .tzutil import today
 
 
 def _first_friday_of_month(y: int, m: int) -> date:
@@ -28,7 +29,7 @@ def quarterly_dates(year: int):
 
 def next_effective_date(from_date: date = None) -> dict:
     if from_date is None:
-        from_date = date.today()
+        from_date = today()
 
     for y in range(from_date.year, from_date.year + 2):
         for q in quarterly_dates(y):
@@ -37,12 +38,12 @@ def next_effective_date(from_date: date = None) -> dict:
     return {}
 
 
-def is_effective_today(today: date = None) -> bool:
-    if today is None:
-        today = date.today()
+def is_effective_today(d: date = None) -> bool:
+    if d is None:
+        d = today()
 
-    for y in range(today.year - 1, today.year + 2):
+    for y in range(d.year - 1, d.year + 2):
         for q in quarterly_dates(y):
-            if q["effective_date"] == today:
+            if q["effective_date"] == d:
                 return True
     return False
