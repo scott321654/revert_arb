@@ -51,13 +51,6 @@
 <div class="card">
   <div class="card-body">
     <h6>📋 執行日誌</h6>
-    <div id="waitProgress" class="text-center py-3 mb-3" style="display:none; background: #f8f9fa; border-radius: 8px">
-      <div id="waitLabel" class="text-muted mb-2">等待中...</div>
-      <div id="waitCountdown" style="font-size: 2.5rem; font-weight: 700; font-family: monospace; color: #2c3e50"></div>
-      <div class="progress mt-2" style="height: 12px">
-        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="waitBar" style="width: 0%"></div>
-      </div>
-    </div>
     <div class="monitor-log" id="monitorLog">尚未開始監控</div>
   </div>
 </div>
@@ -128,25 +121,8 @@ function pollStatus() {
         logEl.textContent = data.log.join('\n');
         logEl.scrollTop = logEl.scrollHeight;
       }
-      const progEl = document.getElementById('waitProgress');
-      if (data.wait_total > 0 && data.wait_remaining > 0) {
-        progEl.style.display = 'block';
-        const pct = Math.round((1 - data.wait_remaining / data.wait_total) * 100);
-        document.getElementById('waitBar').style.width = pct + '%';
-        const h = Math.floor(data.wait_remaining / 3600);
-        const m = Math.floor((data.wait_remaining % 3600) / 60);
-        const s = data.wait_remaining % 60;
-        document.getElementById('waitCountdown').textContent =
-          h > 0 ? h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
-                : m + ':' + String(s).padStart(2, '0');
-        document.getElementById('waitLabel').textContent =
-          data.phase === 'waiting' ? '等待 13:25 基準價' : '等待 13:30 收盤價';
-      } else {
-        progEl.style.display = 'none';
-      }
       if (data.phase === 'done' || data.phase === 'cancelled' || (!data.running && data.log.length > 0)) {
         clearInterval(pollInterval);
-        progEl.style.display = 'none';
         document.getElementById('btnStart').disabled = false;
         document.getElementById('btnStart').textContent = '▶ 開始監控';
         document.getElementById('btnStop').classList.add('d-none');

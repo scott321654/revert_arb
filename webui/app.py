@@ -60,8 +60,6 @@ monitor_state = {
     "phase": "",  # waiting / capturing_ref / waiting_final / capturing_final / done / cancelled
     "log": [],
     "cancel": False,
-    "wait_total": 0,
-    "wait_remaining": 0,
 }
 
 
@@ -276,8 +274,6 @@ def api_monitor_start():
     monitor_state["phase"] = "capturing_ref"
     monitor_state["log"] = []
     monitor_state["cancel"] = False
-    monitor_state["wait_total"] = 0
-    monitor_state["wait_remaining"] = 0
     _log(f"開始監控 {len(targets)} 檔標的: {', '.join(targets)}")
 
     def _run():
@@ -288,19 +284,13 @@ def api_monitor_start():
 
             if _now < start_dt:
                 wait_sec = int((start_dt - _now).total_seconds())
-                _log("等待 13:25 基準價...")
+                _log(f"等待 13:25 基準價 (約 {wait_sec} 秒)...")
                 monitor_state["phase"] = "waiting"
-                monitor_state["wait_total"] = wait_sec
                 while now() < start_dt:
                     if monitor_state["cancel"]:
                         _log("已取消")
                         return
-                    monitor_state["wait_remaining"] = int((start_dt - now()).total_seconds())
-                    if monitor_state["wait_remaining"] <= 0:
-                        break
                     time.sleep(1)
-                monitor_state["wait_total"] = 0
-                monitor_state["wait_remaining"] = 0
 
             if monitor_state["cancel"]:
                 _log("已取消")
@@ -328,19 +318,13 @@ def api_monitor_start():
             _now = now()
             if _now < end_dt:
                 wait_sec = int((end_dt - _now).total_seconds())
-                _log("等待 13:30 收盤價...")
+                _log(f"等待 13:30 收盤價 (約 {wait_sec} 秒)...")
                 monitor_state["phase"] = "waiting_final"
-                monitor_state["wait_total"] = wait_sec
                 while now() < end_dt:
                     if monitor_state["cancel"]:
                         _log("已取消")
                         return
-                    monitor_state["wait_remaining"] = int((end_dt - now()).total_seconds())
-                    if monitor_state["wait_remaining"] <= 0:
-                        break
                     time.sleep(1)
-                monitor_state["wait_total"] = 0
-                monitor_state["wait_remaining"] = 0
 
             monitor_state["phase"] = "capturing_final"
             _log("捕捉 13:30 收盤價...")
