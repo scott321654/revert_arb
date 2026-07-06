@@ -58,6 +58,7 @@
           <button type="button" class="btn btn-outline-secondary active" onclick="filterStocks('all', this)">全部</button>
           <button type="button" class="btn btn-outline-danger" onclick="filterStocks('added', this)">納入</button>
           <button type="button" class="btn btn-outline-success" onclick="filterStocks('removed', this)">剔除</button>
+          <button type="button" class="btn btn-outline-warning" onclick="filterStocks('reweight', this)">調降</button>
         </div>
         <div style="max-height:370px;overflow-y:auto">
           <table class="table table-sm table-hover">
@@ -240,6 +241,7 @@ function startPricePolling() {
 
 document.addEventListener('DOMContentLoaded', function() {
   updateHighlights();
+  refreshPrices();
   startPricePolling();
 });
 
@@ -261,6 +263,7 @@ function filterStocks(mode, btn) {
     const isGreen = row.classList.contains('table-success');
     if (mode === 'added') row.style.display = isRed ? '' : 'none';
     if (mode === 'removed') row.style.display = isGreen ? '' : 'none';
+    if (mode === 'reweight') row.style.display = row.classList.contains('table-warning') ? '' : 'none';
   });
 }
 

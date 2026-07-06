@@ -163,7 +163,8 @@ function pollStatus() {
         document.getElementById('btnStop').disabled = false;
         document.getElementById('btnStop').textContent = '⏹ 停止';
       }
-    });
+    })
+    .catch(() => {});
 }
 
 function fetchSinglePrice() {

@@ -310,13 +310,12 @@ def api_monitor_start():
             _log("捕捉 13:25 基準價...")
             for sid in monitor_state["targets"]:
                 q = current_price(sid)
-                z = q.get("z") if q else None
-                p = float(z) if z and z != "-" else None
+                p = q.get("price") if q else None
                 if p is not None:
                     monitor_state["refs"][sid] = {
                         "price": p,
-                        "name": q.get("n") or lookup_name(sid),
-                        "prev_close": float(q["y"]) if q.get("y") and q["y"] != "-" else None,
+                        "name": q.get("name") or lookup_name(sid),
+                        "prev_close": q.get("prev_close"),
                     }
                     _log(f"  {sid} ({monitor_state['refs'][sid]['name']}): 基準價 {p}")
                 time.sleep(0.5)
@@ -348,20 +347,9 @@ def api_monitor_start():
                 if sid not in monitor_state["refs"]:
                     continue
                 q = current_price(sid)
-                z_raw = q.get("z") if q else "-"
-                final_z = float(z_raw) if z_raw and z_raw != "-" else None
-                if final_z is not None:
-                    monitor_state["finals"][sid] = final_z
-                else:
-                    a_val = q.get("a", "") if q else ""
-                    b_val = q.get("b", "") if q else ""
-                    try:
-                        ask = float(a_val.split("_")[0]) if a_val and a_val != "-" else None
-                        bid = float(b_val.split("_")[0]) if b_val and b_val != "-" else None
-                        if ask and bid:
-                            monitor_state["finals"][sid] = round((ask + bid) / 2, 2)
-                    except (ValueError, IndexError, TypeError):
-                        pass
+                final_p = q.get("price") if q else None
+                if final_p is not None:
+                    monitor_state["finals"][sid] = final_p
                 _log(f"  {sid}: 收盤價 {monitor_state['finals'].get(sid, '−')}")
                 time.sleep(0.5)
 
