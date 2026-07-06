@@ -357,8 +357,9 @@ def api_monitor_start():
                 monitor_state["wait_remaining"] = 0
 
             monitor_state["phase"] = "capturing_final"
-            _log("等待收盤搓合結果 (30秒)...")
-            time.sleep(30)
+            if now() < end_dt + timedelta(seconds=30):
+                _log("等待收盤搓合結果 (30秒)...")
+                time.sleep(30)
             _log("捕捉 13:30 收盤價...")
             for sid in monitor_state["targets"]:
                 if sid not in monitor_state["refs"]:
