@@ -30,6 +30,12 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
 
 
+@app.after_request
+def _no_cache(resp):
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+
 def fmt_pct(value, digits=2):
     if value is None:
         return ""
