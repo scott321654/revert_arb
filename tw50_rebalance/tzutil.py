@@ -9,3 +9,7 @@ def now():
 
 def today():
     return now().date()
+
+
+def strptime(s, fmt):
+    return datetime.strptime(s, fmt).replace(tzinfo=_TZ)

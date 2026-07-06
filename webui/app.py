@@ -13,7 +13,7 @@ import json
 import time
 import threading
 from datetime import date, datetime, timedelta
-from tw50_rebalance.tzutil import now, today
+from tw50_rebalance.tzutil import now, today, strptime as tz_strptime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
@@ -272,8 +272,8 @@ def api_monitor_start():
 
     def _run():
         try:
-            start_dt = datetime.strptime(f"{today()} 13:25", "%Y-%m-%d %H:%M")
-            end_dt = datetime.strptime(f"{today()} 13:30", "%Y-%m-%d %H:%M")
+            start_dt = tz_strptime(f"{today()} 13:25", "%Y-%m-%d %H:%M")
+            end_dt = tz_strptime(f"{today()} 13:30", "%Y-%m-%d %H:%M")
             _now = now()
 
             if _now < start_dt:

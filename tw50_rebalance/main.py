@@ -15,7 +15,7 @@ import sys
 import time
 from typing import Optional
 from datetime import date, datetime, timedelta
-from .tzutil import now, today
+from .tzutil import now, today, strptime as tz_strptime
 
 from .schedule import quarterly_dates, next_effective_date, is_effective_today
 from .signal import evaluate
@@ -239,8 +239,8 @@ def cmd_monitor_all():
     entry_start, entry_end = STRATEGY["entry_window"]
     _now = now()
     today_str = _now.strftime("%Y-%m-%d")
-    start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
-    end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
+    start_dt = tz_strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
+    end_dt = tz_strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
     poll_start = start_dt.replace(second=0) - timedelta(seconds=5)
 
     if _now < poll_start:
@@ -386,8 +386,8 @@ def cmd_monitor():
     entry_start, entry_end = STRATEGY["entry_window"]
     _now = now()
     today_str = _now.strftime("%Y-%m-%d")
-    start_dt = datetime.strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
-    end_dt = datetime.strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
+    start_dt = tz_strptime(f"{today_str} {entry_start}", "%Y-%m-%d %H:%M")
+    end_dt = tz_strptime(f"{today_str} {entry_end}", "%Y-%m-%d %H:%M")
 
     poll_start = start_dt.replace(second=0) - timedelta(seconds=10)
     if _now < poll_start:
