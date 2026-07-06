@@ -268,6 +268,9 @@ def api_monitor_start():
     if not targets:
         return jsonify({"error": "請先在「調整名單」頁面設定標的"}), 400
 
+    if now() >= tz_strptime(f"{today()} 13:25", "%Y-%m-%d %H:%M"):
+        return jsonify({"error": "已過 13:25，無法取得基準價，偏離度將失去意義。請改用「訊號檢查」手動輸入"}), 400
+
     monitor_state["running"] = True
     monitor_state["targets"] = targets
     monitor_state["refs"] = {}

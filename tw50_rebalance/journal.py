@@ -8,9 +8,12 @@ from .signal import Signal
 from .config import COST
 
 
+_DEFAULT_PATH = Path(__file__).resolve().parent.parent / "trades.json"
+
+
 class TradeJournal:
-    def __init__(self, path: str = "trades.json"):
-        self.path = Path(path)
+    def __init__(self, path: str = None):
+        self.path = Path(path) if path else _DEFAULT_PATH
         self.trades = []
         self._load()
 

@@ -135,29 +135,28 @@ def fetch_all_prices(priority_codes: list = None) -> dict:
 
 
 def recent_daily_volatility(stock_id: str, days: int = 5) -> Optional[float]:
-    _today = today()
+    d = today()
     ranges = []
 
-    for i in range(30):
-        d = _today - timedelta(days=i)
-        if d.weekday() >= 5:
-            continue
-        url = TWSE_DAILY.format(d.strftime("%Y%m%d"), stock_id)
+    for _ in range(3):
+        url = TWSE_DAILY.format(d.strftime("%Y%m01"), stock_id)
         data = _fetch_json(url)
-        if not data or "data" not in data:
-            continue
-        for row in data["data"]:
-            try:
-                high = float(row[4].replace(",", ""))
-                low = float(row[5].replace(",", ""))
-                close = float(row[6].replace(",", ""))
-                pct = (high - low) / close * 100
-                ranges.append(pct)
-            except (ValueError, IndexError):
-                continue
+        month_ranges = []
+        if data and data.get("data"):
+            for row in data["data"]:
+                try:
+                    high = float(row[4].replace(",", ""))
+                    low = float(row[5].replace(",", ""))
+                    close = float(row[6].replace(",", ""))
+                    month_ranges.append((high - low) / close * 100)
+                except (ValueError, IndexError):
+                    continue
+        ranges = month_ranges + ranges
         if len(ranges) >= days:
             break
+        d = d.replace(day=1) - timedelta(days=1)
 
+    ranges = ranges[-days:]
     if len(ranges) < 2:
         return None
     mean = sum(ranges) / len(ranges)

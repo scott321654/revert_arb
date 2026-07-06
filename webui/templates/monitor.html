@@ -58,8 +58,7 @@
   </div>
 </div>
 
-{% if monitor_state.results %}
-<div class="card">
+<div class="card" id="resultsCard" {% if not monitor_state.results %}style="display:none"{% endif %}>
   <div class="card-body">
     <h6>📊 監控結果</h6>
     <div class="table-responsive">
@@ -75,7 +74,7 @@
             <th>結果</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="resultsBody">
           {% for r in monitor_state.results %}
           <tr class="{% if r.actionable %}table-success{% endif %}">
             <td><strong>{{ r.stock_id }}</strong> {{ r.stock_name }}</td>
@@ -92,7 +91,6 @@
     </div>
   </div>
 </div>
-{% endif %}
 
 <script>
 let pollInterval = null;
@@ -101,12 +99,32 @@ function startMonitor() {
   fetch('/api/monitor/start', { method: 'POST' })
     .then(r => r.json())
     .then(data => {
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
       document.getElementById('btnStart').disabled = true;
       document.getElementById('btnStart').textContent = '執行中...';
       document.getElementById('btnStop').classList.remove('d-none');
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(pollStatus, 1000);
     });
+}
+
+function renderResults(results) {
+  if (!results || !results.length) return;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  document.getElementById('resultsBody').innerHTML = results.map(r => `
+    <tr class="${r.actionable ? 'table-success' : ''}">
+      <td><strong>${esc(r.stock_id)}</strong> ${esc(r.stock_name)}</td>
+      <td>${esc(r.event)}</td>
+      <td>${r.ref_price}</td>
+      <td>${r.final_price}</td>
+      <td class="${r.deviation < 0 ? 'text-success' : ''}">${r.deviation >= 0 ? '+' : ''}${r.deviation.toFixed(2)}%</td>
+      <td class="${r.zscore >= 2.5 ? 'zscore-high' : 'zscore-low'}">${r.zscore.toFixed(1)}σ</td>
+      <td>${r.actionable ? '✅' : '❌'}</td>
+    </tr>`).join('');
+  document.getElementById('resultsCard').style.display = '';
 }
 
 function stopMonitor() {
@@ -154,6 +172,7 @@ function pollStatus() {
         if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       }
       if (data.phase === 'done' || data.phase === 'cancelled' || (!data.running && data.log.length > 0)) {
+        renderResults(data.results);
         clearInterval(pollInterval);
         if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
         waitEl.style.display = 'none';

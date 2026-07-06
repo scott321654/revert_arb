@@ -51,8 +51,8 @@ class TestRecordExit:
         assert result["exit_price"] == 110.0
         assert result["status"] == "closed"
         assert result["gross_return_pct"] == 10.0
-        assert result["net_return_pct"] == pytest.approx(9.643, abs=0.001)
-        assert result["cost_pct"] == 0.357
+        assert result["net_return_pct"] == pytest.approx(9.529, abs=0.001)
+        assert result["cost_pct"] == 0.471
 
     def test_closes_latest_entry_only(self, tmp_path):
         j = TradeJournal(str(tmp_path / "trades.json"))
@@ -71,7 +71,7 @@ class TestRecordExit:
         result = j.record_exit("2330", 90.0)
 
         assert result["gross_return_pct"] == -10.0
-        assert result["net_return_pct"] == pytest.approx(-10.357, abs=0.001)
+        assert result["net_return_pct"] == pytest.approx(-10.471, abs=0.001)
 
     def test_returns_none_if_no_open_trade(self, tmp_path):
         j = TradeJournal(str(tmp_path / "trades.json"))

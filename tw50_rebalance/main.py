@@ -185,7 +185,6 @@ def _monitor_single(stock_id: str, has_ref: bool, ref_price=None, ref_name="", p
 
     if ref_price is not None and final_price is not None:
         deviation = round((final_price - ref_price) / ref_price * 100, 2)
-        day_change = round((final_price - prev_close) / prev_close * 100, 2)
     else:
         return None
 
@@ -259,6 +258,7 @@ def cmd_monitor_all():
     has_ref = now() < start_dt.replace(second=0)
     if has_ref:
         print(f"📡 批次捕捉 {len(targets)} 檔 13:25 前最後成交價...")
+        refs = {}
         deadline_13_25 = start_dt.replace(second=0)
         while now() < deadline_13_25:
             for sid in targets:
@@ -407,6 +407,8 @@ def cmd_monitor():
     if has_ref:
         print(f"📡 持續捕捉 {stock_id} 13:25 前最後一筆成交價...")
         ref_price = None
+        stock_name = ""
+        prev_close = None
         last_print = ""
         deadline_13_25 = start_dt.replace(second=0)
         while now() < deadline_13_25:
@@ -415,8 +417,8 @@ def cmd_monitor():
             p = float(z) if z and z != "-" else None
             if p is not None:
                 ref_price = p
-                stock_name = q["name"] or lookup_name(stock_id)
-                prev_close = q["prev_close"]
+                stock_name = q.get("name") or lookup_name(stock_id)
+                prev_close = q.get("prev_close")
             now_str = now().strftime("%H:%M:%S")
             msg = f"\r   {now_str}  最新價: {p or '−':>8}   基準價: {ref_price or '−'}"
             if msg != last_print:
@@ -455,15 +457,15 @@ def cmd_monitor():
                 print("❌ 無法取得13:30收盤價")
                 return
 
-        day_change = round((final_price - prev_close) / prev_close * 100, 2)
         deviation = round((final_price - ref_price) / ref_price * 100, 2)
 
-        print(f"   昨收: {prev_close}")
+        print(f"   昨收: {prev_close or '−'}")
         print(f"   今開: {final_quote.get('o', '')}")
         print(f"   13:25 基準: {ref_price}")
         print(f"   13:30 收盤: {final_price}")
         print(f"   尾盤5分鐘偏離度: {deviation:+.2f}%")
-        print(f"   今日漲跌(對昨收): {day_change:+.2f}%")
+        if prev_close:
+            print(f"   今日漲跌(對昨收): {(final_price - prev_close) / prev_close * 100:+.2f}%")
         print()
     else:
         print(f"⚠️  已過 13:25，無法取得13:25基準價，無法計算尾盤5分鐘偏離度")

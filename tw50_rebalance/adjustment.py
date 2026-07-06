@@ -3,9 +3,12 @@ from pathlib import Path
 from typing import Optional
 
 
+_DEFAULT_PATH = Path(__file__).resolve().parent.parent / "adjustment.json"
+
+
 class AdjustmentList:
-    def __init__(self, path: str = "adjustment.json"):
-        self.path = Path(path)
+    def __init__(self, path: str = None):
+        self.path = Path(path) if path else _DEFAULT_PATH
         self.data = {"quarter": "", "removed": [], "added": [], "reweight": []}
         self._load()
 
