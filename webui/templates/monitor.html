@@ -158,7 +158,9 @@ function pollStatus() {
       const waitEl = document.getElementById('waitInfo');
       if (data.wait_total > 0 && data.wait_remaining > 0) {
         waitEl.style.display = 'block';
-        countdownVal = data.wait_remaining;
+        if (data.wait_remaining < countdownVal || !countdownTimer) {
+          countdownVal = data.wait_remaining;
+        }
         updateCountdownDisplay();
         document.getElementById('waitLabel').textContent =
           data.phase === 'waiting' ? '⏳ 等待 13:25 基準價' : '⏳ 等待 13:30 收盤價';
