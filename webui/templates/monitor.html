@@ -130,7 +130,7 @@ function pollStatus() {
       }
       const progEl = document.getElementById('waitProgress');
       if (data.wait_total > 0 && data.wait_remaining > 0) {
-        progEl.style.display = '';
+        progEl.style.display = 'block';
         const pct = Math.round((1 - data.wait_remaining / data.wait_total) * 100);
         document.getElementById('waitBar').style.width = pct + '%';
         const h = Math.floor(data.wait_remaining / 3600);

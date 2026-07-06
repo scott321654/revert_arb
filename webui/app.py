@@ -270,6 +270,8 @@ def api_monitor_start():
     monitor_state["phase"] = "capturing_ref"
     monitor_state["log"] = []
     monitor_state["cancel"] = False
+    monitor_state["wait_total"] = 0
+    monitor_state["wait_remaining"] = 0
     _log(f"開始監控 {len(targets)} 檔標的: {', '.join(targets)}")
 
     def _run():
