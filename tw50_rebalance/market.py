@@ -10,6 +10,20 @@ TWSE_REALTIME = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch={}_{}.
 TWSE_DAILY = "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={}&stockNo={}"
 
 
+def is_trading_day(check_date: date = None) -> bool:
+    if check_date is None:
+        check_date = today()
+    if check_date.weekday() >= 5:
+        return False
+    p = yahoo_5m_price("0050", target_date=check_date.strftime("%Y-%m-%d"))
+    if p is not None:
+        return True
+    p = yahoo_close_price("0050", target_date=check_date.strftime("%Y-%m-%d"))
+    if p is not None:
+        return True
+    return False
+
+
 def _fetch_json(url: str) -> Optional[dict]:
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})

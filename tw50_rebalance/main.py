@@ -23,7 +23,7 @@ from .journal import TradeJournal
 from .config import STRATEGY, COST
 from .stocks import lookup_name
 from .adjustment import AdjustmentList
-from .market import current_price, recent_daily_volatility
+from .market import current_price, recent_daily_volatility, is_trading_day
 
 
 def cmd_schedule():
@@ -234,6 +234,11 @@ def cmd_monitor_all():
 
     print(f"📋 將監控 {len(targets)} 檔標的: {', '.join(targets)}")
     print()
+
+    _ref_date = today()
+    if not is_trading_day(_ref_date):
+        print(f"📅 {_ref_date} 為非交易日（休市），無盤中資料可監控")
+        return
 
     entry_start, entry_end = STRATEGY["entry_window"]
     _now = now()

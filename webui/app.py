@@ -24,7 +24,7 @@ from tw50_rebalance.journal import TradeJournal
 from tw50_rebalance.config import STRATEGY, COST
 from tw50_rebalance.stocks import lookup_name, get_all_stocks, refresh_stocks, auto_compare_tw50, fetch_tw50_holdings
 from tw50_rebalance.adjustment import AdjustmentList
-from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch, yahoo_5m_price, yahoo_close_price
+from tw50_rebalance.market import current_price, recent_daily_volatility, is_market_open_today, fetch_all_prices, _fetch_realtime_batch, yahoo_5m_price, yahoo_close_price, is_trading_day
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -288,6 +288,12 @@ def api_monitor_start():
                 _log(f"凌晨時段，以 {ref_date} 為交易日進行盤後監控...")
             else:
                 ref_date = today()
+
+            if not is_trading_day(ref_date):
+                _log(f"📅 {ref_date} 為非交易日（休市），無盤中資料可監控")
+                monitor_state["phase"] = "done"
+                return
+
             start_dt = tz_strptime(f"{ref_date} 13:25", "%Y-%m-%d %H:%M")
             end_dt = tz_strptime(f"{ref_date} 13:30", "%Y-%m-%d %H:%M")
 
